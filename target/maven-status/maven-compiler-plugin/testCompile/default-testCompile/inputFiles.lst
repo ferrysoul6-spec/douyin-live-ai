@@ -1,0 +1,9 @@
+/Users/kang/Desktop/richang/douyin-live-ai/src/test/java/com/example/douyinlive/llm/FallbackLlmClientTest.java
+/Users/kang/Desktop/richang/douyin-live-ai/src/test/java/com/example/douyinlive/llm/TtsCacheKeyTest.java
+/Users/kang/Desktop/richang/douyin-live-ai/src/test/java/com/example/douyinlive/service/AudioQueueServiceTest.java
+/Users/kang/Desktop/richang/douyin-live-ai/src/test/java/com/example/douyinlive/service/EventWorkerTest.java
+/Users/kang/Desktop/richang/douyin-live-ai/src/test/java/com/example/douyinlive/service/FaqServiceTest.java
+/Users/kang/Desktop/richang/douyin-live-ai/src/test/java/com/example/douyinlive/service/RateLimiterTest.java
+/Users/kang/Desktop/richang/douyin-live-ai/src/test/java/com/example/douyinlive/service/ReplyServiceOrchestrationTest.java
+/Users/kang/Desktop/richang/douyin-live-ai/src/test/java/com/example/douyinlive/service/ReplyServiceTextTest.java
+/Users/kang/Desktop/richang/douyin-live-ai/src/test/java/com/example/douyinlive/service/ViewerMemoryServiceConcurrencyTest.java

@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.example.douyinlive.service.ViewerMemoryServiceConcurrencyTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.006 s -- in com.example.douyinlive.service.ViewerMemoryServiceConcurrencyTest

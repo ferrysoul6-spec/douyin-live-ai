@@ -1,0 +1,123 @@
+server:
+  # 抖音云容器服务默认将流量转发到容器内固定端口，部署时按控制台模板要求
+  # 通过环境变量 SERVER_PORT 覆盖，本地默认 8080
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: douyin-live-ai
+  jackson:
+    default-property-inclusion: non_null
+
+live-ai:
+  # 大模型（火山方舟，OpenAI 兼容协议）。所有可调项都在这里，改完重启生效。
+  llm:
+    # Key 走环境变量 ARK_API_KEY（兼容旧的 DEEPSEEK_API_KEY），不要写进代码库
+    api-key: ${ARK_API_KEY:${DEEPSEEK_API_KEY:}}
+    base-url: ${ARK_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
+    model: ${ARK_MODEL:doubao-seed-2-1-lite-260915}
+    temperature: 0.7
+    max-tokens: 120
+    timeout-seconds: 10
+    # 方舟 doubao-seed 系默认开深度思考（reasoning 几百 token、延迟 10s+），直播必须关
+    disable-thinking: ${ARK_DISABLE_THINKING:true}
+    # 主模型失败（限流 / 超时 / 模型不可用 / 返回空）时回落的备用模型，只换 model 字段，
+    # Key 与 base-url 不变。只能兜「模型级」故障；Key 失效/欠费/方舟整体故障仍走话术池。
+    fallback-model: ${ARK_FALLBACK_MODEL:doubao-seed-2-1-turbo-260628}
+    fallback-enabled: ${ARK_FALLBACK_ENABLED:true}
+    # 兜底超时比主模型短，避免单条弹幕连等两次完整超时
+    fallback-timeout-seconds: ${ARK_FALLBACK_TIMEOUT_SECONDS:5}
+  persona:
+    name: 大肥鱼
+    style: 温柔、话痨、简短
+    max-reply-chars: 30
+    max-welcome-chars: 26
+    # 基础人设记忆：AI 的自我认知与直播间背景，每次拼进 system prompt。
+    # 优先读文件（改完不用重启），文件不存在则回落到下面的纯文本。
+    persona-memory-file: ${PERSONA_MEMORY_FILE:live-assets/persona.md}
+    persona-memory: ""
+    # LLM 不可用（无 Key/余额不足/超时）时，评论回复用预设话术池随机兜底，不再静默丢弃
+    fallback-reply-enabled: ${FALLBACK_REPLY_ENABLED:true}
+    fallback-replies:
+      - 感谢关注，具体细节我帮您转达主播~
+      - 这条我记下来了，主播稍后统一解答哦
+      - 宝子稍等一下，主播马上回你
+  memory:
+    # 观众记忆：跨天记住来过的观众，欢迎语会提「又来啦」
+    enabled: ${MEMORY_ENABLED:true}
+    file: ${MEMORY_FILE:./memory-viewers.json}
+    max-viewers: 5000
+    # 最短写盘间隔（秒），避免高频弹幕反复 IO
+    flush-interval-seconds: 30
+    personalized-welcome: true
+    max-questions-per-viewer: 5
+  throttle:
+    # 同一观众 10 分钟内不重复欢迎
+    welcome-dedupe-seconds: 600
+    # 同一观众两次 AI 回复间隔至少 15 秒
+    reply-cooldown-seconds: 15
+    # 进场欢迎 / 评论回复分开配额：开场进场高峰不能把评论额度吃光
+    welcome-llm-per-minute: ${THROTTLE_WELCOME_LLM_PER_MINUTE:10}
+    reply-llm-per-minute: ${THROTTLE_REPLY_LLM_PER_MINUTE:30}
+    # 两类合计上限（兜底）
+    global-llm-per-minute: ${THROTTLE_GLOBAL_LLM_PER_MINUTE:40}
+    # 每分钟最多几条欢迎语（LLM + 模板合计），防进场高峰刷屏
+    welcome-per-minute: ${THROTTLE_WELCOME_PER_MINUTE:15}
+    # 命中 FAQ 直接返回答案，不调 LLM
+    faq-shortcut: true
+  tts:
+    # 语音回复总开关；关闭后只下发文本
+    enabled: ${TTS_ENABLED:true}
+    # edge=本机 edge-tts（微软免费，需 uvx）；seedtts=火山 SeedTTS 2.0（生产主用，纯 HTTP）
+    provider: ${TTS_PROVIDER:seedtts}
+    # 主引擎为 seedtts 时，失败/超时/配额用尽自动回落到 edge-tts（微软免费）
+    fallback-to-edge: ${TTS_FALLBACK_TO_EDGE:true}
+    # 异步合成：命中缓存同步秒回，未命中后台合成（关掉则退回同步阻塞，便于对比）
+    async-enabled: ${TTS_ASYNC_ENABLED:true}
+    async-threads: ${TTS_ASYNC_THREADS:2}
+    # 异步队列上限，满则丢弃该条语音（不阻塞弹幕处理）
+    async-queue-size: ${TTS_ASYNC_QUEUE_SIZE:50}
+    # 中文音色：zh-CN-XiaoxiaoNeural(女) / zh-CN-YunxiNeural(男) / zh-CN-XiaoyiNeural(少女)
+    voice: ${TTS_VOICE:zh-CN-XiaoxiaoNeural}
+    # 音频缓存目录（按文本哈希复用，相同欢迎语不重复合成）
+    dir: ./audio-cache
+    # 下发给前端的音频 URL 前缀；部署到抖音云后改成容器公网/内网访问地址
+    public-url-base: ${TTS_PUBLIC_URL_BASE:http://127.0.0.1:8080}
+    command: ${TTS_COMMAND:uvx}
+    seedtts:
+      # 语音专属 API Key（UUID 形态，控制台「API Key 管理」里语音用途那把；不是 ark- 开头的方舟 Key）
+      api-key: ${SEEDTTS_API_KEY:}
+      endpoint: ${SEEDTTS_ENDPOINT:https://openspeech.bytedance.com/api/v3/tts/unidirectional}
+      resource-id: ${SEEDTTS_RESOURCE_ID:seed-tts-2.0}
+      # 2.0 音色（实测可用）：ICL_uranus_zh_female_jiaoruoluoli_tob(当前) / zh_female_xiaohe_uranus_bigtts / zh_female_vv_uranus_bigtts
+      speaker: ${SEEDTTS_SPEAKER:ICL_uranus_zh_female_jiaoruoluoli_tob}
+      sample-rate: 24000
+    timeout-seconds: 20
+    # 是否入队给本机播放器（afplay → OBS 桌面音频 → 直播间，全场可听）
+    enqueue-for-player: true
+    # 队列上限，超出丢最旧。按每条 30 字约 6s 音频、播放过期窗口 60s 计算，
+    # 超过 10 条的尾部必然被播放器判为过时，白合成一次
+    queue-max-size: 10
+  collector:
+    # 弹幕采集模式：off=不采集 / simulate=本地模拟事件 / live=连真实直播间。
+    # 由 scripts/start-live.sh 按命令行动作设置；单独跑 mvn 时可用 COLLECTOR_MODE 覆盖。
+    mode: ${COLLECTOR_MODE:off}
+    # 直播间号：浏览器打开 live.douyin.com/ 后面那串数字（与 room-id 二选一）
+    live-id: ${COLLECTOR_LIVE_ID:}
+    # 真实 room_id（分享短链/reflow 页面解析出的数字），直接用可跳过进房接口
+    room-id: ${COLLECTOR_ROOM_ID:}
+    # 签名服务地址：DouyinLiveJava SDK 不含签名算法，必须外部提供。
+    # 自建签名服务填这里；留空则 SDK 按 RAPIDAPI_KEY / SIGN_URL 环境变量自行选择
+    sign-url: ${COLLECTOR_SIGN_URL:}
+    # 可选登录态 Cookie（能收到更完整的弹幕），用环境变量注入，严禁写进代码库
+    cookie: ${COLLECTOR_COOKIE:}
+    # 断线重连：起始 5s，失败翻倍，封顶 120s
+    reconnect-delay-seconds: 5
+    reconnect-max-seconds: 120
+    # 采集回调 → 处理线程的队列容量（条）。回调只投递，避免 1s 级 LLM 耗时堵住 SDK 读线程；满则丢最旧
+    event-queue-size: ${COLLECTOR_EVENT_QUEUE_SIZE:200}
+
+logging:
+  level:
+    root: info
+    com.example.douyinlive: debug

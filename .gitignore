@@ -1,0 +1,7 @@
+
+# 观众记忆（含观众昵称等运行数据，不入库）
+memory-viewers.json
+memory-viewers.json.tmp
+.env
+.env.*
+!.env.example
