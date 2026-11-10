@@ -71,5 +71,5 @@ public class OutboundMessage {
 
     public enum Display { DANMU, CARD, TOAST, TTS }
 
-    public enum Source { FAQ, LLM, WELCOME, FALLBACK, SUPPRESSED }
+    public enum Source { FAQ, LLM, WELCOME, FALLBACK, MUSIC, WARMUP, SUPPRESSED }
 }

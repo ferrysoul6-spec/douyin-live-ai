@@ -1,6 +1,8 @@
 package com.example.douyinlive.service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.slf4j.Logger;
@@ -40,17 +42,23 @@ public class ReplyService {
     private final LlmClient llmClient;
     private final TtsAsyncService ttsAsyncService;
     private final ViewerMemoryService memory;
+    private final MusicService music;
+    private final StageService stage;
 
     public ReplyService(AppProperties props, FaqService faqService,
                         RateLimiter rateLimiter, LlmClient llmClient,
                         TtsAsyncService ttsAsyncService,
-                        ViewerMemoryService memory) {
+                        ViewerMemoryService memory,
+                        MusicService music,
+                        StageService stage) {
         this.props = props;
         this.faqService = faqService;
         this.rateLimiter = rateLimiter;
         this.llmClient = llmClient;
         this.ttsAsyncService = ttsAsyncService;
         this.memory = memory;
+        this.music = music;
+        this.stage = stage;
     }
 
     public OutboundMessage handle(LiveEvent event) {
@@ -63,7 +71,26 @@ public class ReplyService {
             case LIKE, UNKNOWN -> OutboundMessage.suppressed("不处理的事件类型");
         };
         attachAudio(msg);
+        if (!msg.isSuppressed()) {
+            // 字幕与动作都从这里统一上报，前端只需要轮询一个接口
+            stage.say(msg.getToNickname(), msg.getText());
+        }
         msg.setCostMs(System.currentTimeMillis() - start);
+        return msg;
+    }
+
+    /**
+     * 冷场暖场：直接播一条预置话术。
+     *
+     * <p>不走 LLM（不烧 token），也不占欢迎语的去重/频控；语音仍复用同一套
+     * TTS 与播放队列，所以 TTS 挂了也只是没声音，字幕照常。
+     */
+    public OutboundMessage warmup(String text) {
+        OutboundMessage msg = OutboundMessage.of(text, OutboundMessage.Display.TTS, OutboundMessage.Source.WARMUP);
+        msg.setToNickname("大肥鱼");
+        attachAudio(msg);
+        stage.play("bubble");
+        stage.say("大肥鱼", text);
         return msg;
     }
 
@@ -102,6 +129,7 @@ public class ReplyService {
             return OutboundMessage.suppressed("欢迎语每分钟上限");
         }
         String nickname = safeNickname(event);
+        stage.play("wave");
 
         // 记录本次访问并取历史档案（老观众 welcome 会提到「又来啦」）
         ViewerMemoryService.ViewerProfile profile = null;
@@ -144,6 +172,11 @@ public class ReplyService {
             return OutboundMessage.suppressed("用户回复冷却中");
         }
 
+        Optional<MusicService.Command> musicCommand = music.parse(content);
+        if (musicCommand.isPresent()) {
+            return handleMusicCommand(musicCommand.get(), event);
+        }
+
         FaqService.FaqEntry hit = faqService.match(content);
         if (hit != null && props.getThrottle().isFaqShortcut()) {
             // 走一遍截断：FAQ 文案以后可能被人加长，超出上限会污染下发内容
@@ -177,6 +210,7 @@ public class ReplyService {
                 + "观众「" + safeNickname(event) + "」说：" + content + "\n请回复。";
 
         String text;
+        stage.play("think", 0);
         try {
             text = truncate(llmClient.chat(buildSystemPrompt(props.getPersona().getMaxReplyChars()), userPrompt),
                     props.getPersona().getMaxReplyChars());
@@ -193,8 +227,60 @@ public class ReplyService {
         return msg;
     }
 
+    /**
+     * 点歌 / 切歌 / 看队列：固定文案，不经过 FAQ 也不消耗 LLM 额度。
+     * 解析不到播放源时明确告知，不假装已经排上。
+     */
+    private OutboundMessage handleMusicCommand(MusicService.Command cmd, LiveEvent event) {
+        String nickname = safeNickname(event);
+        String text = switch (cmd.type()) {
+            case PLAY -> {
+                MusicService.EnqueueResult r = music.enqueue(cmd.query(), nickname);
+                if (r.ok()) {
+                    stage.play("sing");
+                    Object current = music.state().getOrDefault("current", "");
+                    yield String.valueOf(current).isBlank()
+                            ? "收到点歌：《" + r.title() + "》，这就放给你听～"
+                            : "收到点歌：《" + r.title() + "》，前面那首放完就到。";
+                }
+                yield r.full()
+                        ? "队列已经排满啦，等前面放完再点吧～"
+                        : "《" + r.title() + "》暂时没有播放源，本鲸先记下歌名。";
+            }
+            case NEXT -> music.requestSkip()
+                    ? "切歌！下一首马上来～"
+                    : "现在还没开始放歌呀，想听什么直接点～";
+            case LIST -> describeQueue();
+        };
+        OutboundMessage msg = OutboundMessage.of(
+                truncate(text, props.getPersona().getMaxReplyChars()),
+                OutboundMessage.Display.DANMU, OutboundMessage.Source.MUSIC);
+        msg.setToNickname(nickname);
+        return msg;
+    }
+
+    /** 「歌单」指令的回复：当前曲 + 排队中的几首。 */
+    private String describeQueue() {
+        Map<String, Object> state = music.state();
+        Object current = state.getOrDefault("current", "");
+        Object queue = state.get("queue");
+        int size = queue instanceof List<?> list ? list.size() : 0;
+        if (String.valueOf(current).isBlank() && size == 0) {
+            return "队列空空的，想听什么直接点～";
+        }
+        StringBuilder sb = new StringBuilder();
+        if (!String.valueOf(current).isBlank()) {
+            sb.append("在放《").append(current).append("》");
+        }
+        if (size > 0) {
+            sb.append(sb.length() > 0 ? "，" : "").append("队列还有 ").append(size).append(" 首");
+        }
+        return sb.toString();
+    }
+
     /** 礼物感谢。连击已在采集端合并，这里只按最终数量说一次。 */
     private OutboundMessage handleGift(LiveEvent event) {
+        stage.play("happy");
         String nickname = safeNickname(event);
         Integer count = event.getCount();
         String gift = event.getContent();
@@ -209,6 +295,7 @@ public class ReplyService {
     }
 
     private OutboundMessage handleFollow(LiveEvent event) {
+        stage.play("shy");
         String nickname = safeNickname(event);
         OutboundMessage msg = OutboundMessage.of(
                 truncate("欢迎" + nickname + "关注，点个关注不迷路~", props.getPersona().getMaxReplyChars()),

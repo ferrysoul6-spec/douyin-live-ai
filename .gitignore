@@ -5,3 +5,31 @@ memory-viewers.json.tmp
 .env
 .env.*
 !.env.example
+
+# 素材烘焙产物与源素材（体积大，用 scripts/key-black.py 重生成）
+live-assets/pet-alpha/
+live-assets/pet/
+backups/
+
+# TTS 语音缓存（运行时按 key 生成，删了只会重新合成一次）
+audio-cache/
+
+# 构建产物
+target/
+*.class
+
+# 运行时状态与本地数据
+.live-state
+memory-viewers-sim.json
+live-assets/music-library/*.mp3
+live-assets/music-library/**/
+live-assets/music-library/*.wav
+live-assets/music-library/*.flac
+live-assets/music-library/*.m4a
+live-assets/music-library/*.ogg
+
+# 编辑器 / 系统
+.idea/
+.DS_Store
+__pycache__/
+*.pyc

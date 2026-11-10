@@ -33,6 +33,8 @@ class ReplyServiceOrchestrationTest {
     private LlmClient llm;
     private TtsAsyncService tts;
     private ViewerMemoryService memory;
+    private MusicService music;
+    private StageService stage;
     private ReplyService service;
 
     @BeforeEach
@@ -43,7 +45,9 @@ class ReplyServiceOrchestrationTest {
         llm = mock(LlmClient.class);
         tts = mock(TtsAsyncService.class);
         memory = mock(ViewerMemoryService.class);
-        service = new ReplyService(props, faq, limiter, llm, tts, memory);
+        music = mock(MusicService.class);
+        stage = mock(StageService.class);
+        service = new ReplyService(props, faq, limiter, llm, tts, memory, music, stage);
 
         when(tts.cachedOrDispatch(anyString(), any())).thenReturn(Optional.empty());
         // 真实实现遇到 null 档案会返回空串，mock 默认返回 null 会 NPE
@@ -141,6 +145,34 @@ class ReplyServiceOrchestrationTest {
         OutboundMessage msg = service.handle(gift);
 
         assertThat(msg.getText()).contains("10 个小心心");
+    }
+
+    @Test
+    void 点歌指令不走FAQ和LLM() {
+        when(music.parse("点歌 晴天")).thenReturn(java.util.Optional.of(
+                new MusicService.Command(MusicService.CommandType.PLAY, "晴天")));
+        when(music.enqueue("晴天", "测试观众")).thenReturn(
+                new MusicService.EnqueueResult(true, false, "晴天 - 周杰伦"));
+        when(music.state()).thenReturn(java.util.Map.of("current", ""));
+
+        OutboundMessage msg = service.handle(comment("点歌 晴天"));
+
+        assertThat(msg.getSource()).isEqualTo(OutboundMessage.Source.MUSIC);
+        assertThat(msg.getText()).contains("晴天 - 周杰伦");
+        verify(llm, never()).chat(anyString(), anyString());
+        verify(faq, never()).match(anyString());
+    }
+
+    @Test
+    void 点歌没播放源时明确告知() {
+        when(music.parse("点歌 冷门歌")).thenReturn(java.util.Optional.of(
+                new MusicService.Command(MusicService.CommandType.PLAY, "冷门歌")));
+        when(music.enqueue("冷门歌", "测试观众")).thenReturn(
+                new MusicService.EnqueueResult(false, false, "冷门歌"));
+
+        OutboundMessage msg = service.handle(comment("点歌 冷门歌"));
+
+        assertThat(msg.getText()).contains("没有播放源");
     }
 
     private LiveEvent comment(String content) {

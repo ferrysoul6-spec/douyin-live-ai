@@ -8,6 +8,10 @@ spring:
     name: douyin-live-ai
   jackson:
     default-property-inclusion: non_null
+  web:
+    resources:
+      # live-assets 下的静态文件直接可访问：/pet-alpha/*.webm 动作、/stage 页面资源
+      static-locations: file:./live-assets/,classpath:/static/
 
 live-ai:
   # 大模型（火山方舟，OpenAI 兼容协议）。所有可调项都在这里，改完重启生效。
@@ -98,6 +102,30 @@ live-ai:
     # 队列上限，超出丢最旧。按每条 30 字约 6s 音频、播放过期窗口 60s 计算，
     # 超过 10 条的尾部必然被播放器判为过时，白合成一次
     queue-max-size: 10
+  music:
+    # 点歌：观众发「点歌 X / 我想听 X / 切歌 / 歌单」
+    enabled: ${MUSIC_ENABLED:true}
+    # 网易云解析服务（自建 NeteaseCloudMusicApi，如 http://127.0.0.1:3000）
+    # 留空 = 只回指令话术、不下发音频；本地解析服务用 scripts/netease-api.sh 启停
+    resolve-base: ${MUSIC_RESOLVE_BASE:http://127.0.0.1:3000}
+    queue-max: ${MUSIC_QUEUE_MAX:3}
+    # 背景音乐音量（0-1），AI 语音是 1.0
+    volume: ${MUSIC_VOLUME:0.35}
+    dir: ./music-cache
+    # 本地曲库：点歌先在这里按文件名模糊匹配，命中就播本地、不走在线解析
+    # （VIP 歌没直链、版权、加载慢三件事一起绕开）。留空关闭。
+    library-dir: ${MUSIC_LIBRARY_DIR:./live-assets/music-library}
+  stage:
+    # OBS 浏览器源指向 http://127.0.0.1:8080/stage
+    enabled: ${STAGE_ENABLED:true}
+    # 空闲轮换的动作（素材在 live-assets/pet-alpha/*.webm）
+    idle-actions: idle,doze,tail,tea,bubble
+    idle-after-seconds: 18
+  warmup:
+    # 冷场暖场：静默一段时间主动播一条预置话术（不走 LLM，复用 TTS 队列）
+    enabled: ${WARMUP_ENABLED:true}
+    idle-seconds: ${WARMUP_IDLE_SECONDS:120}
+    min-interval-seconds: ${WARMUP_MIN_INTERVAL_SECONDS:180}
   collector:
     # 弹幕采集模式：off=不采集 / simulate=本地模拟事件 / live=连真实直播间。
     # 由 scripts/start-live.sh 按命令行动作设置；单独跑 mvn 时可用 COLLECTOR_MODE 覆盖。

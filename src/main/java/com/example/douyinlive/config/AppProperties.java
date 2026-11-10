@@ -1,5 +1,8 @@
 package com.example.douyinlive.config;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -13,7 +16,10 @@ public class AppProperties {
     private final Throttle throttle = new Throttle();
     private final Tts tts = new Tts();
     private final Collector collector = new Collector();
+    private final Music music = new Music();
+    private final Stage stage = new Stage();
     private final Memory memory = new Memory();
+    private final Warmup warmup = new Warmup();
 
     public Llm getLlm() {
         return llm;
@@ -29,6 +35,18 @@ public class AppProperties {
 
     public Collector getCollector() {
         return collector;
+    }
+
+    public Music getMusic() {
+        return music;
+    }
+
+    public Stage getStage() {
+        return stage;
+    }
+
+    public Warmup getWarmup() {
+        return warmup;
     }
 
     public Persona getPersona() {
@@ -305,6 +323,90 @@ public class AppProperties {
         public void setSpeaker(String s) { this.speaker = s; }
         public int getSampleRate() { return sampleRate; }
         public void setSampleRate(int n) { this.sampleRate = n; }
+    }
+
+    /**
+     * 点歌。观众发「点歌 X / 我想听 X / 切歌」即可进队列；
+     * 音频由本机播放器循环取走播放，与 AI 语音是两个独立队列，混音后一起进推流。
+     */
+    public static class Music {
+        private boolean enabled = true;
+        /**
+         * 网易云解析服务地址（自建 NeteaseCloudMusicApi），如 http://127.0.0.1:3000。
+         * 留空时点歌只做指令回复，不下发音频（避免播不出还想当然）。
+         */
+        private String resolveBase = "";
+        /** 待播队列上限（不含正在播的那首）。 */
+        private int queueMax = 3;
+        /** 背景音乐音量（0-1），AI 语音是 1.0，避免盖住说话。 */
+        private double volume = 0.35;
+        /** 下载缓存目录。 */
+        private String dir = "./music-cache";
+        /**
+         * 本地曲库目录：点歌先在这里模糊匹配，命中就播本地文件，不再走在线解析。
+         * 目录内容由静态资源映射对外暴露为 /music-library/**，播放器直接下载。
+         * 留空关闭本地曲库。
+         */
+        private String libraryDir = "./live-assets/music-library";
+
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean b) { this.enabled = b; }
+        public String getResolveBase() { return resolveBase; }
+        public void setResolveBase(String s) { this.resolveBase = s; }
+        public int getQueueMax() { return queueMax; }
+        public void setQueueMax(int n) { this.queueMax = n; }
+        public double getVolume() { return volume; }
+        public void setVolume(double v) { this.volume = v; }
+        public String getDir() { return dir; }
+        public void setDir(String s) { this.dir = s; }
+        public String getLibraryDir() { return libraryDir; }
+        public void setLibraryDir(String s) { this.libraryDir = s; }
+    }
+
+    /**
+     * 直播画面（OBS 浏览器源）：角色动作 + 字幕气泡 + 点歌队列。
+     */
+    public static class Stage {
+        private boolean enabled = true;
+        /** 空闲时轮换的动作，逗号分隔（素材在 live-assets/pet-alpha/*.webm）。 */
+        private String idleActions = "idle,doze,tail,tea,bubble";
+        /** 空闲多少秒后开始轮换动作。 */
+        private int idleAfterSeconds = 18;
+
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean b) { this.enabled = b; }
+        public String getIdleActions() { return idleActions; }
+        public void setIdleActions(String s) { this.idleActions = s; }
+        public int getIdleAfterSeconds() { return idleAfterSeconds; }
+        public void setIdleAfterSeconds(int n) { this.idleAfterSeconds = n; }
+    }
+
+    /**
+     * 冷场暖场：直播间接连一段时间没有互动时，主动播一条预置话术，
+     * 避免画面和声音都静下来（也降低被判定为无人直播的概率）。
+     */
+    public static class Warmup {
+        private boolean enabled = true;
+        /** 静默多少秒后开始暖场（从最近一次舞台活动算起）。 */
+        private int idleSeconds = 120;
+        /** 两次暖场之间的最小间隔秒数，防止一直自言自语。 */
+        private int minIntervalSeconds = 180;
+        /** 暖场话术池，随机取一条；留空则不暖场。 */
+        private List<String> lines = new ArrayList<>(List.of(
+                "直播间现在人不多，我先自己聊两句：最近在折腾 AI 直播这套东西，有想一起做的可以直接打在公屏上。",
+                "空场时间补一条——想做小程序的朋友，把需求打在公屏上，我帮你看能不能做、大概什么路子。",
+                "最近在整理 AI 直播踩过的坑，弹幕想问哪块，我优先讲。",
+                "有人在看的话打个 1，我看看要不要聊聊技术选型。"
+        ));
+
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean b) { this.enabled = b; }
+        public int getIdleSeconds() { return idleSeconds; }
+        public void setIdleSeconds(int n) { this.idleSeconds = n; }
+        public int getMinIntervalSeconds() { return minIntervalSeconds; }
+        public void setMinIntervalSeconds(int n) { this.minIntervalSeconds = n; }
+        public List<String> getLines() { return lines; }
+        public void setLines(List<String> l) { this.lines = l; }
     }
 
     /**

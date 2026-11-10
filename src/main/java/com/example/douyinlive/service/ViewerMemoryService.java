@@ -187,6 +187,18 @@ public class ViewerMemoryService {
         flush();
     }
 
+    /** 逐个档案在锁内复制一份，序列化用副本，避免与写入线程竞争。 */
+    private Map<String, ViewerProfile> snapshot() {
+        Map<String, ViewerProfile> copy = new LinkedHashMap<>();
+        for (Map.Entry<String, ViewerProfile> entry : profiles.entrySet()) {
+            ViewerProfile profile = entry.getValue();
+            synchronized (profile) {
+                copy.put(entry.getKey(), profile.copy());
+            }
+        }
+        return copy;
+    }
+
     /** 立即写盘（退出时兜底）。 */
     public synchronized void flush() {
         if (!props.getMemory().isEnabled()) {
@@ -200,7 +212,9 @@ public class ViewerMemoryService {
             }
             // 先写临时文件再原子替换，避免进程被 kill 时留下半个 JSON
             Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
-            Files.writeString(tmp, mapper.writeValueAsString(profiles), StandardCharsets.UTF_8);
+            // 必须序列化快照：EventWorker 可能正在 recordQuestion，
+            // 直接序列化 profiles 会读 size 后 get 越界（Index out of bounds）
+            Files.writeString(tmp, mapper.writeValueAsString(snapshot()), StandardCharsets.UTF_8);
             Files.move(tmp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             lastFlushAt.set(System.currentTimeMillis());
             dirty = false;

@@ -22,6 +22,7 @@ ROOT="$(pwd)"
 VIDEO="$ROOT/live-assets/whale-live-final.mp4"
 BACKEND_LOG=/tmp/douyin-live-ai-backend.log
 PLAYER_LOG=/tmp/douyin-live-ai-player.log
+MUSIC_LOG=/tmp/douyin-live-ai-music.log
 STATE_FILE="$ROOT/.live-state"
 VIRTUAL_DEV="${VIRTUAL_DEVICE:-OrayVirtualAudioDevice}"
 BASE_URL="http://127.0.0.1:${SERVER_PORT:-8080}"
@@ -106,6 +107,59 @@ player_loop() {
   done
 }
 
+# ---------------- 点歌播放器（独立于语音，两个队列互不抢） ----------------
+music_loop() {
+  command -v afplay >/dev/null 2>&1 || { echo "需要 macOS afplay"; exit 1; }
+  command -v python3 >/dev/null 2>&1 || { echo "需要 python3"; exit 1; }
+
+  local pidfile="${TMPDIR:-/tmp}/douyin-live-ai-music.pid"
+  if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile" 2>/dev/null)" 2>/dev/null; then
+    echo "音乐播放器已在运行 (pid $(cat "$pidfile"))，本进程退出"
+    exit 0
+  fi
+  echo $$ > "$pidfile"
+  trap 'rm -f "$pidfile"' EXIT
+
+  local vol="${MUSIC_VOLUME:-0.35}"
+  local resp tmp url title status ap
+  resp="${TMPDIR:-/tmp}/live-ai-music-resp.$$"
+  tmp="${TMPDIR:-/tmp}/live-ai-music-$$.mp3"
+  echo "音乐播放器已启动 → ${BASE_URL}（音量 ${vol}）"
+
+  while true; do
+    status="$(curl -s -o "$resp" -w '%{http_code}' --max-time 5 "$BASE_URL/music/next")"
+    if [ "$status" != "200" ]; then
+      sleep 2
+      continue
+    fi
+    url="$(json_field url < "$resp")"
+    title="$(json_field title < "$resp")"
+    [ -n "$url" ] || { sleep 1; continue; }
+    # 本地曲库返回的是相对地址（/music-library/xxx.mp3），补上后端前缀
+    case "$url" in /*) url="$BASE_URL$url" ;; esac
+
+    echo "[music] 播放: $title"
+    # 网易云直链需要 UA，且只能播本地文件
+    if curl -s --max-time 20 -A 'Mozilla/5.0' -o "$tmp" "$url" && [ -s "$tmp" ]; then
+      afplay -v "$vol" "$tmp" &
+      ap=$!
+      while kill -0 "$ap" 2>/dev/null; do
+        if curl -s --max-time 2 "$BASE_URL/music/skip" | grep -q '"skip":true'; then
+          kill "$ap" 2>/dev/null
+          echo "[music] 切歌"
+          break
+        fi
+        sleep 1
+      done
+      wait "$ap" 2>/dev/null
+    else
+      echo "[warn] 音乐下载失败: $url"
+    fi
+    rm -f "$tmp"
+    curl -s -X POST "$BASE_URL/music/finish" >/dev/null 2>&1
+  done
+}
+
 # ---------------- 参数 ----------------
 TARGET=""
 AUDIO_MODE="keep"
@@ -119,6 +173,7 @@ for arg in "$@"; do
     --stop)     ACTION="stop" ;;
     --simulate) ACTION="simulate" ;;
     --player)   ACTION="player" ;;
+    --music)    ACTION="music" ;;
     -h|--help)  usage; exit 0 ;;
     -*)         fail "未知参数：${arg}（--help 查看用法）" ;;
     *)          TARGET="$arg" ;;
@@ -130,9 +185,15 @@ if [ "$ACTION" = "player" ]; then
   exit 0
 fi
 
+if [ "$ACTION" = "music" ]; then
+  music_loop
+  exit 0
+fi
+
 backend_pid() { pgrep -f "com.example.douyinlive.DouyinLiveAiApplication" | head -1; }
 # 旧版 audio-player.sh 的进程也要算进来：它同样会抢 /audio/queue/next
 player_pid()  { pgrep -f "start-live.sh --player|audio-player.sh" | head -1; }
+music_pid()   { pgrep -f "start-live.sh --music" | head -1; }
 
 # ---------------- 状态 / 停止 ----------------
 restore_audio() {
@@ -145,8 +206,10 @@ restore_audio() {
 
 do_stop() {
   local bp pp
-  bp="$(backend_pid)"; pp="$(player_pid)"
+  local mp
+  bp="$(backend_pid)"; pp="$(player_pid)"; mp="$(music_pid)"
   if [ -n "$bp" ]; then kill "$bp" 2>/dev/null; info "已停止后端 (pid $bp)"; else info "后端未运行"; fi
+  if [ -n "$mp" ]; then pkill -f "start-live.sh --music" 2>/dev/null; info "已停止音乐播放器 (pid $mp)"; fi
   if [ -n "$pp" ]; then
     pkill -f "start-live.sh --player" 2>/dev/null
     pkill -f "audio-player.sh" 2>/dev/null
@@ -175,6 +238,8 @@ do_status() {
     'import sys,json;d=json.load(sys.stdin);print("事件队列  : 积压 %s 条 / 已处理 %s 条 / 丢弃 %s 条" % (d["queueSize"],d["handled"],d["dropped"]))' 2>/dev/null
   curl -s --max-time 3 "$BASE_URL/memory/stats" 2>/dev/null | python3 -c \
     'import sys,json;d=json.load(sys.stdin);print("观众记忆  : %s 位观众 / 累计 %s 次访问" % (d["profiles"],d["totalVisits"]))' 2>/dev/null
+  curl -s --max-time 3 "$BASE_URL/music/state" 2>/dev/null | python3 -c \
+    'import sys,json;d=json.load(sys.stdin);q=d.get("queue") or [];print("点歌队列  : %s 首 / 在放 %s" % (len(q), d.get("current") or "无"))' 2>/dev/null
   dev="$(SwitchAudioSource -c -t output 2>/dev/null)"
   echo "系统输出  : $dev"
   if [ -f "$STATE_FILE" ]; then echo "开播记录  : $(tr '\n' ' ' < "$STATE_FILE")"; fi
@@ -313,6 +378,23 @@ start_player() {
   fi
 }
 
+start_music() {
+  local existing
+  existing="$(music_pid)"
+  if [ -n "$existing" ]; then
+    warn "已有音乐播放器在运行 (pid $existing)，跳过重复启动"
+    return 0
+  fi
+  info "启动音乐播放器（点歌队列 → afplay）"
+  nohup "$0" --music > "$MUSIC_LOG" 2>&1 &
+  sleep 1
+  if [ -n "$(music_pid)" ]; then
+    ok "音乐播放器已启动"
+  else
+    warn "音乐播放器启动异常，查看 $MUSIC_LOG"
+  fi
+}
+
 banner() {
   cat <<BANNER
 
@@ -352,4 +434,5 @@ fi
 apply_audio_mode
 start_backend "$ROOM"
 start_player
+start_music
 banner
