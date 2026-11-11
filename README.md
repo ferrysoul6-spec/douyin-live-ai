@@ -328,11 +328,50 @@ curl -s localhost:8080/music/state                      # 当前曲 + 队列
 
 | 项 | 说明 |
 |---|---|
-| 素材 | `live-assets/pet-alpha/*.webm`（25 个动作，**带真 alpha 通道**；缺失时退回黑底源素材 `pet`） |
-| 抠像 | 素材出厂是**纯黑底、没有 alpha**，靠 `scripts/key-black.py` 烘焙成真 alpha 视频，页面不需要任何滤镜 |
-| 动作映射 | 进场 `wave`、礼物 `happy`、关注 `shy`、LLM 生成中 `think`、说完 `bubble`、点歌 `sing` |
+| 素材 | `live-assets/shenshen/`（深深 2.0，7 个分卷共 106 个动作 × 241 帧，原始 webp 自带 alpha） |
+| 播放 | canvas 按 24fps 逐帧抽图，**不烘 webm**，原图一个字节都不改 |
+| 动作映射 | 进场 `wave`、礼物 `happy`、关注 `shy`、LLM 生成中 `think`、说完 `bubble`、点歌 `sing`、其余为待机轮换 |
 | 空闲 | 超过 18s 无事件后在 `idle,doze,tail,tea,bubble` 之间轮换，小动作播 3s 自动回 `idle` |
-| 前端 | 每 0.8s 轮询 `GET /stage/state`，只在 `seq` 变化时换视频 |
+| 前端 | 每 0.8s 轮询 `GET /stage/state`，只在 `seq` 变化时换动作 |
+
+**素材直接读原图，不烘焙**
+
+素材包是 `lossless-frame-v1`：每个动作一个目录，`f_0001.webp` … 共 241 帧
+（640×360 @ 24fps，帧本身带 alpha，不需要抠像）。前端按清单逐帧拉图绘制，
+换动作就是换一组图片，素材本身不用重新编码。
+
+两步准备（一次性，约 30 秒）：
+
+```bash
+./scripts/prepare-shenshen.sh          # 把 7 个分卷软链到 live-assets/shenshen/，并生成清单
+python3 scripts/shenshen-crop.py       # 扫描每个动作的人物包围盒，写裁剪窗口（约 15s）
+```
+
+- `prepare-shenshen.sh` 默认去上一层目录找 `shenshen-2.0.0-base-640x360.*`，
+  也可以传路径。整套约 1.4GB，用软链挂进来、不入库。
+- `shenshen-crop.py` 解决「人物太小」：原图 640×360 里人物只占约 235×266，
+  两侧全是空。它按每个动作采样帧的 alpha 包围盒写一个 `crop`，
+  前端 `drawImage` 时用它裁到人物再放大——**仍然是原图，只是显示时裁**。
+  所有动作的裁剪窗口高度统一成 330px，前端只按高度归一，
+  所以切换动作时人物不会忽大忽小（飘散特效的边角会被裁掉，人物本体保留）。
+
+动作名映射在 `scripts/shenshen-bake.py` 的 `NAMED` 表里（素材包的动作名是
+「点击回应-元气挥手」这类中文长名，后端只认 `wave`）。没列进去的按 `r01`、`r02` …
+编号，正好给待机轮换用。改了映射重跑 `prepare-shenshen.sh` 即可。
+
+内存：一帧解码后约 0.9MB，241 帧就是 220MB，所以前端只保留最近两个动作
+（`CACHE_MAX`），切走就释放。要加动作别把这个数调大，OBS 的 CEF 会撑爆。
+
+**换素材**：
+
+1. 替换素材包目录 → `./scripts/prepare-shenshen.sh` → `python3 scripts/shenshen-crop.py`；
+2. 在 OBS 里右键浏览器源 →「刷新页面」。
+
+清单是 `live-assets/stage/manifest-shenshen.json`（入库，便于追溯改了哪些映射）。
+
+**另一套素材（可选）**：`live-assets/pet/` 是早先的「黑底无 alpha」素材，
+要显示它得跑 `scripts/key-black.py` 烘成 `pet-alpha/*.webm`。前端已经切到
+逐帧素材，这两个目录留着只是备份，不参与播放。烘焙要点见下面这段（保留备查）：
 
 **为什么必须烘焙，而不是用 CSS 滤镜抠黑**
 
@@ -362,24 +401,17 @@ curl -s localhost:8080/music/state                      # 当前曲 + 队列
 
 ```bash
 pip install numpy scipy pillow          # 一次性
-python3 scripts/key-black.py --crf 20 --outline 4 --force   # 现网参数，约 15 分钟
+python3 scripts/key-black.py --crf 20 --outline 4 --force   # 约 15 分钟
 python3 scripts/key-black.py --only idle,wave --force       # 只重做部分
 ```
 
-体积参考：3 倍 + `--crf 20` 约 180MB（每动作约 7MB）；`--crf 32` 约 100MB 但细线会糊，
-`--scale 1` 只剩一个零头。
-`pet-alpha/` 整个删掉也没事，页面会自动退回带亮度滤镜的源素材 `pet/`。
+体积参考：3 倍 + `--crf 20` 约 180MB（每动作约 7MB）；`--crf 32` 约 100MB 但细线会糊。
 
-**换素材的三步**（顺序别反，否则 OBS 会继续播旧文件）：
-
-1. 重烘：`python3 scripts/key-black.py --crf 20 --outline 4 --force`；
-2. 改 `live-assets/stage/index.html` 里的 `ASSET_VER`（如 `20261110`），页面会用
-   `?v=<版本>` 拉视频，绕开 OBS/CEF 的 webm 缓存；
-3. 在 OBS 里右键浏览器源 →「刷新页面」（或等它重新加载）。
+同一套思路也能把这批逐帧素材压成 webm：`scripts/shenshen-bake.py` 会逐帧编码
+（预乘空间放大，避免透明区的噪声混进边缘）。逐帧直读不需要它，留着给带宽受限的场景。
 
 `live-assets/` 是 `file:./live-assets/` 直接对外暴露的静态根目录——旧的素材备份要挪到
-`backups/`（顶层，不对外），别留在 `live-assets/` 里，否则 `/pet-alpha-v1/*.webm`
-会被公网直接访问到。
+`backups/`（顶层，不对外），别留在 `live-assets/` 里，否则会被公网直接访问到。
 
 > 注：`dewhite` 的判据必须带**连通性约束**——头顶发饰内部那圈黑色被很薄的蓝边包着，
 > 按「到背景的欧氏距离 ≤N 像素」会在里面打出一片白孔。实测 `dewhite_px=6` 时
@@ -397,13 +429,10 @@ python3 scripts/key-black.py --only idle,wave --force       # 只重做部分
 OBS 里加一个**浏览器源**，URL 填 `http://127.0.0.1:8080/stage`，宽高与画布一致，
 勾选「透明背景」（页面本身没有背景色）。
 
-> 老环境（OBS 内置 CEF 较旧）可能不支持 VP9 alpha。页面会实测首帧：
-> 检测不到透明像素就自动退回 `pet/` + 亮度滤镜，不会变成黑方块。
-
 配置：`live-ai.stage.*`（enabled / idle-actions / idle-after-seconds）
 
-> 动作素材取自 [newbeejmc/Dsh_douyin](https://github.com/newbeejmc/Dsh_douyin)，
-> 公开使用前请确认素材授权。
+> 素材使用时请确认授权。早先那套动作素材取自
+> [newbeejmc/Dsh_douyin](https://github.com/newbeejmc/Dsh_douyin)。
 
 ## 本地运行
 

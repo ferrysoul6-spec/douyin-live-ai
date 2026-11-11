@@ -10,20 +10,20 @@
     font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
     color: #eaf4ff;
   }
-  /* 双缓冲：两个 video 叠在同一位置。切动作时先把新动作加载进隐藏的那个，
-     出帧后再交叉淡入——单元素直接改 src 会先清空画面，idle 每 3s 换一次
+  /* 双缓冲：两个 canvas 叠在同一位置。切动作时先把新动作的帧加载好，
+     出帧后再交叉淡入——单画布直接换帧源会先清空画面，idle 每 3s 换一次
      小动作，看上去就是人物持续闪黑。 */
   #pet, #pet2 {
     position: absolute; left: 50%; bottom: 0;
     transform: translateX(-50%);
-    height: 94%; max-width: 92vw; object-fit: contain;
+    height: 94%; width: auto; max-width: 92vw;
+    /* canvas 不像 video 会自己 keep aspect：不锁比例，舞台不是 16:9 时人物会被压扁。
+       360/340 是下面的统一视图尺寸，见 VIEW */
+    aspect-ratio: 360 / 340;
     pointer-events: none;
     opacity: 0; transition: opacity .16s linear;
   }
   #pet.on, #pet2.on { opacity: 1; }
-  /* 只有退回「黑底无 alpha」的旧素材时才需要亮度抠像；
-     /pet-alpha 是真 alpha 视频，加滤镜反而会破坏它 */
-  #pet.filtered, #pet2.filtered { filter: url(#deblack); }
   /* 字幕放头顶：角色占满画面高度，底部气泡会压住身体 */
   #bubble {
     position: absolute; left: 50%; top: 2%;
@@ -70,29 +70,14 @@
 </style>
 </head>
 <body>
-<svg width="0" height="0" aria-hidden="true" style="position:absolute">
-  <defs>
-    <filter id="deblack" color-interpolation-filters="sRGB"
-            x="0" y="0" width="100%" height="100%">
-      <!-- alpha = 亮度（Rec.709）× 25 - 0.5：亮度 < 0.02（实测背景噪声最大 0.035）全透明，
-           > 0.06 全不透明。用线性斜坡而不是 S 曲线：S 曲线暗部给的不透明度太低，
-           角色的黑色眼线/睫毛会透出背景色（实测会变成粉眼线） -->
-      <feColorMatrix type="matrix" values="
-        1 0 0 0 0
-        0 1 0 0 0
-        0 0 1 0 0
-        5.315 17.88 1.805 0 0"/>
-      <feComponentTransfer>
-        <feFuncA type="linear" slope="1" intercept="-0.5"/>
-      </feComponentTransfer>
-    </filter>
-  </defs>
-</svg>
+<!-- 画面用 canvas 逐帧绘制，素材自带 alpha，不需要任何滤镜 -->
 
-<!-- preload=auto：烘焙后的动作每个约 3MB（裁到人物 + 3 倍放大），
-     提前缓冲能减少切动作时的等待 -->
-<video id="pet" muted autoplay playsinline preload="auto"></video>
-<video id="pet2" muted autoplay playsinline preload="auto"></video>
+<!-- 逐帧序列播放：素材是 shenshen 的 lossless-frame-v1 包（原图 640x360 @24fps，
+     每帧一张自带 alpha 的 webp），这里用 canvas 按 24fps 抽帧绘制。
+     不烘成 webm，也不改原图——只是按清单里的 crop 把画布裁到人物，
+     再铺到下面的统一视图里，所以换素材只重算一次 crop。 -->
+<canvas id="pet" width="360" height="340"></canvas>
+<canvas id="pet2" width="360" height="340"></canvas>
 
 <div id="bubble"><span id="bubbleFrom"></span><span id="bubbleText"></span></div>
 
@@ -103,7 +88,10 @@
 
 <script>
 (() => {
-  const vids = [document.getElementById('pet'), document.getElementById('pet2')];
+  const slots = ['pet', 'pet2'].map((id) => {
+    const el = document.getElementById(id);
+    return { el, ctx: el.getContext('2d'), clip: null, pos: 0, acc: 0, drawn: -1 };
+  });
   const bubble = document.getElementById('bubble');
   const bubbleFrom = document.getElementById('bubbleFrom');
   const bubbleText = document.getElementById('bubbleText');
@@ -114,121 +102,178 @@
   let lastTextSeq = -1;
   let bubbleTimer = null;
   let queueSeq = -1;
-  // 素材两套，按优先级：
-  //   /pet-alpha  真 alpha 视频（scripts/key-black.py 烘焙），边缘干净、裁到人物再放大
-  //   /pet        原始黑底素材，靠 CSS 亮度滤镜抠像（alpha 不被支持时退回这套）
-  let base = '/pet-alpha';
-  // 换素材后改这个版本号：OBS 的浏览器源会缓存 webm，不带 ?v= 会继续播旧文件
-  const ASSET_VER = '20261111c';
-  let current = '';            // 当前动作名，空串强制重新加载
-  let active = 0;              // 正在显示的 video 下标
-  let wantFilter = false;      // 只有退回黑底素材时才挂亮度滤镜
-  let alphaChecked = false;
 
-  function applyLook() {
-    vids.forEach((v) => v.classList.toggle('filtered', wantFilter));
+  // 统一视图：所有动作都画进这个尺寸的 canvas，人物高度基本一致，
+  // 切换动作时不会忽大忽小。原图 640x360 上人物只占约 235x266，两侧全是空，
+  // 所以按清单里的 crop 裁到人物再铺满——原图一个字节都没改。
+  const VIEW = [360, 340];
+
+  // 素材清单：slug -> {dir, frames, loop, crop}
+  let manifest = null;
+  let fps = 24;
+  let current = '';          // 当前动作 slug
+  let active = 0;            // 正在显示的槽
+  let pending = 0;           // 切动作的令牌，抢占旧的
+  let endedAt = 0;           // 非循环动作播完的时刻
+
+  // 已加载的动作：只保留最近两个（当前 + 上一个用于交叉淡入）。
+  // 一帧解码后约 0.9MB（640x360 RGBA），241 帧就是 220MB，多留几个会把 OBS 撑爆。
+  const cache = new Map();
+  const CACHE_MAX = 2;
+  const CONCURRENCY = 6;     // 同时拉多少帧，太多会把本地服务打满
+
+  function frameUrl(dir, i) {
+    const path = dir.split('/').map(encodeURIComponent).join('/');
+    return '/shenshen/' + path + '/f_' + String(i + 1).padStart(4, '0') + '.webp';
   }
 
-  /** 画一帧到 canvas 看左上角有没有透明像素：有=浏览器支持视频 alpha。 */
-  function videoHasAlpha(v) {
-    try {
-      const c = document.createElement('canvas');
-      c.width = 8;
-      c.height = 8;
-      const ctx = c.getContext('2d', { willReadFrequently: true });
-      ctx.clearRect(0, 0, 8, 8);
-      ctx.drawImage(v, 0, 0, 8, 8);
-      const d = ctx.getImageData(0, 0, 8, 8).data;
-      for (let i = 3; i < d.length; i += 4) {
-        if (d[i] < 250) return true;
+  function trimCache(keep) {
+    for (const slug of [...cache.keys()]) {
+      if (cache.size <= CACHE_MAX) break;
+      if (slug === keep || slug === current || slug === 'idle') continue;
+      const c = cache.get(slug);
+      c.imgs.length = 0;     // 断掉引用，让解码位图被回收
+      cache.delete(slug);
+    }
+  }
+
+  /** 逐帧加载一个动作：并发 CONCURRENCY，首帧一到就 resolve，其余后台继续。 */
+  function ensureClip(slug) {
+    if (cache.has(slug)) return cache.get(slug);
+    const meta = manifest.clips[slug];
+    if (!meta) return null;
+
+    const clip = {
+      slug, total: meta.frames, loop: !!meta.loop,
+      imgs: new Array(meta.frames), first: null, done: false,
+    };
+    cache.set(slug, clip);
+
+    let next = 0;
+    const pump = () => {
+      if (next >= clip.total) {
+        clip.done = true;
+        return;
       }
-      return false;
-    } catch (e) {
-      return false;   // 读不到像素（跨域等）就当不支持，走安全的那套
-    }
+      const i = next++;
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => {
+        clip.imgs[i] = img;
+        if (i === 0 && clip.first) clip.first();
+        pump();
+      };
+      // 单帧失败就跳过：缺一张图不至于整段动不了
+      img.onerror = pump;
+      img.src = frameUrl(meta.dir, i);
+    };
+    for (let k = 0; k < CONCURRENCY; k++) pump();
+
+    trimCache(slug);
+    return clip;
   }
 
-  function tryPlay(v) {
-    v.muted = true;
-    const p = v.play();
-    if (p && p.catch) {
-      p.catch(() => {
-        // 浏览器可能拦自动播放：等 loadeddata 再试一次，再不行就等一次点击
-        setTimeout(() => v.play().catch(() => {}), 400);
-      });
-    }
+  function firstFrame(clip) {
+    if (clip.imgs[0]) return Promise.resolve();
+    return new Promise((resolve) => { clip.first = resolve; });
   }
 
-  function fallbackToSource() {
-    if (base === '/pet-alpha') {
-      base = '/pet';
-      wantFilter = true;
-      const again = current;
-      current = '';
-      setAction(again);
-      return true;
-    }
-    return false;
+  function paintSlot(slot) {
+    const img = slot.clip && slot.clip.imgs[slot.pos];
+    if (!img) return;
+    const [sx, sy, sw, sh] = slot.clip.crop || [0, 0, 640, 360];
+    // 只按高度归一：裁剪窗口高度在所有动作里是统一的，所以缩放比一致，
+    // 换动作时人物不会忽大忽小；宽度超出的部分（飘散特效）直接裁掉。
+    const k = VIEW[1] / sh;
+    const dw = sw * k;
+    const dh = sh * k;
+    // 按脚底对齐，而不是按裁剪窗口居中：含特效的窗口（右上角音符、头顶道具）
+    // 会把窗口撑宽，居中就变成「特效居中、人物偏一边」。
+    const [fx, fy] = slot.clip.foot || [sw / 2, sh];
+    slot.ctx.clearRect(0, 0, VIEW[0], VIEW[1]);
+    slot.ctx.drawImage(img, sx, sy, sw, sh,
+      VIEW[0] / 2 - fx * k, VIEW[1] - fy * k, dw, dh);
+    slot.drawn = slot.pos;
   }
 
-  function setAction(action) {
+  async function setAction(action) {
     const name = action || 'idle';
     if (name === current) return;
+    if (!manifest || !manifest.clips[name]) {
+      // 这个名字素材包里没有（比如后端配了别的 idle 动作），退回 idle
+      if (name !== 'idle' && current !== 'idle') setAction('idle');
+      return;
+    }
     current = name;
+    endedAt = 0;
+    const my = ++pending;
+    const clip = ensureClip(name);
+    await firstFrame(clip);
+    // 加载期间又切了别的动作，这次就作废
+    if (my !== pending || !manifest.clips[current]) return;
 
-    // 新动作永远加载进「没在显示」的那个，出帧后才换上去
-    const next = vids[1 - active];
-    next.loop = name === 'idle';
-    // error 监听要跟着 src 走：元素是复用的，不摘掉旧监听会让一次加载失败
-    // 一直挂在那里，后面正常加载时报错也会被误判成「素材坏了」
-    if (next._onErr) next.removeEventListener('error', next._onErr);
-    next._onErr = () => {
-      // 烘焙素材缺失（没跑过 scripts/key-black.py）：退回带滤镜的源素材
-      if (fallbackToSource()) return;
-      // 源素材也坏了：退回 idle，别让画面空白
-      if (current !== 'idle') setAction('idle');
-    };
-    next.addEventListener('error', next._onErr);
-    if (next._onLoaded) next.removeEventListener('loadeddata', next._onLoaded);
-    next.src = base + '/' + name + '.webm?v=' + ASSET_VER;
+    const idx = 1 - active;
+    const slot = slots[idx];
+    slot.clip = clip;
+    slot.pos = 0;
+    slot.acc = 0;
+    slot.drawn = -1;
+    paintSlot(slot);
+    slot.el.classList.add('on');
+    slots[active].el.classList.remove('on');
+    active = idx;
+  }
 
-    const reveal = () => {
-      if (next._onLoaded) {
-        next.removeEventListener('loadeddata', next._onLoaded);
-        next._onLoaded = null;
+  // 主循环：按 24fps 推进帧号，只在帧号变化时重绘（同一张图重复 drawImage 纯属浪费）
+  let lastTs = 0;
+  function pumpFrames(ts) {
+    requestAnimationFrame(pumpFrames);
+    const slot = slots[active];
+    const clip = slot.clip;
+    if (!clip) return;
+
+    const dt = lastTs ? Math.min(ts - lastTs, 200) : 0;   // 切后台回来的大跳帧要压住
+    lastTs = ts;
+    slot.acc += dt;
+
+    const spf = 1000 / fps;
+    let moved = false;
+    while (slot.acc >= spf) {
+      slot.acc -= spf;
+      const nextPos = slot.pos + 1;
+      if (nextPos < clip.total) {
+        if (clip.imgs[nextPos]) { slot.pos = nextPos; moved = true; }
+        else break;                    // 该帧还没下载到，等下一轮
+      } else if (clip.loop) {
+        slot.pos = 0;
+        moved = true;
+      } else {
+        // 非循环：停在最后一帧，等后端切回 idle
+        if (!endedAt) endedAt = ts;
+        break;
       }
-      const prev = vids[active];
-      active = 1 - active;
-      const v = vids[active];
-      v.classList.add('on');
-      prev.classList.remove('on');
-      applyLook();
-      tryPlay(v);
+    }
+    if (moved || slot.drawn !== slot.pos) paintSlot(slot);
 
-      // 首帧到了才检查：有些环境（OBS 的 CEF 较老）不支持 VP9 alpha，
-      // 那样人物会变成一块黑方块，比滤镜方案更糟，所以必须实测再决定
-      if (!alphaChecked && base === '/pet-alpha') {
-        alphaChecked = true;
-        if (!videoHasAlpha(v)) {
-          console.warn('[stage] 该环境不支持视频 alpha，退回黑底素材 + 亮度滤镜');
-          fallbackToSource();
-          return;
-        }
-      }
-      // 交叉淡入结束后停掉旧元素，别让它继续吃解码
-      setTimeout(() => {
-        if (!prev.classList.contains('on')) prev.pause();
-      }, 260);
-    };
-
-    if (next.readyState >= 2) reveal();
-    else {
-      next._onLoaded = reveal;
-      next.addEventListener('loadeddata', reveal);
+    // 软兜底：非循环动作播完 4s 还停在那儿，本地先回 idle，别让画面定格
+    if (endedAt && ts - endedAt > 4000 && current !== 'idle') {
+      endedAt = 0;
+      setAction('idle');
     }
   }
 
-  window.addEventListener('click', () => tryPlay(vids[active]), { once: true });
+  async function boot() {
+    try {
+      const res = await fetch('/stage/manifest-shenshen.json', { cache: 'no-cache' });
+      manifest = await res.json();
+      fps = manifest.fps || 24;
+      requestAnimationFrame(pumpFrames);
+      setAction('idle');
+      tick();
+    } catch (e) {
+      console.error('[stage] 素材清单加载失败', e);
+    }
+  }
 
   function showBubble(from, text) {
     bubbleFrom.textContent = from ? from + '：' : '';
@@ -276,9 +321,9 @@
       if (res.ok) {
         const state = await res.json();
         if (state.enabled === false) {
-          vids.forEach((v) => { v.style.display = 'none'; });
+          slots.forEach((s) => { s.el.style.display = 'none'; });
         } else {
-          vids.forEach((v) => { v.style.display = ''; });
+          slots.forEach((s) => { s.el.style.display = ''; });
           if (state.seq !== lastSeq) {
             lastSeq = state.seq;
             setAction(state.action);
@@ -296,27 +341,8 @@
     setTimeout(tick, 800);
   }
 
-  // 非 idle 动作是一次性视频，播完就停在最后一帧。后端的回切任务万一丢了
-  // （或被新事件顶掉），画面就一直定在那儿——本地兜一层，播完自己回 idle。
-  vids.forEach((v) => {
-    v.addEventListener('ended', () => {
-      if (v.classList.contains('on') && current !== 'idle') setAction('idle');
-    });
-  });
+  boot();
 
-  // 看门狗：OBS 的 CEF 偶尔会把 video 暂停掉，而 seq 不变时前端没有任何事件
-  // 可依赖，只能定时自检——正在显示的那路没在播就重新拉起来。
-  setInterval(() => {
-    const v = vids[active];
-    if (!v || !v.src) return;
-    if (v.ended) {
-      if (current !== 'idle') setAction('idle');
-      return;
-    }
-    if (v.paused) tryPlay(v);
-  }, 1500);
-
-  tick();
 })();
 </script>
 </body>

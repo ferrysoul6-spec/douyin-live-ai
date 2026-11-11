@@ -11,6 +11,9 @@ live-assets/pet-alpha/
 live-assets/pet/
 backups/
 
+# 深深 2.0 逐帧素材包（约 1.4GB，前端直接读原始 webp 帧，目录由 prepare-shenshen.sh 挂接）
+live-assets/shenshen/
+
 # TTS 语音缓存（运行时按 key 生成，删了只会重新合成一次）
 audio-cache/
 

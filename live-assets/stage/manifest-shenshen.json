@@ -1,0 +1,1811 @@
+{
+ "fps": 24,
+ "canvas": [
+  640,
+  360
+ ],
+ "clips": {
+  "angry": {
+   "dir": "core/anim/click/点击回应-傲娇生气",
+   "frames": 241,
+   "name": "点击回应-傲娇生气",
+   "category": "click",
+   "loop": false,
+   "crop": [
+    196,
+    17,
+    245,
+    330
+   ],
+   "foot": [
+    117.5,
+    330
+   ]
+  },
+  "wave": {
+   "dir": "core/anim/click/点击回应-元气挥手",
+   "frames": 241,
+   "name": "点击回应-元气挥手",
+   "category": "click",
+   "loop": false,
+   "crop": [
+    195,
+    17,
+    248,
+    330
+   ],
+   "foot": [
+    124.4,
+    330
+   ]
+  },
+  "shy": {
+   "dir": "core/anim/click/点击回应-害羞惊讶",
+   "frames": 241,
+   "name": "点击回应-害羞惊讶",
+   "category": "click",
+   "loop": false,
+   "crop": [
+    197,
+    15,
+    250,
+    330
+   ],
+   "foot": [
+    125.7,
+    330
+   ]
+  },
+  "happy": {
+   "dir": "core/anim/click/点击回应-开心跃动",
+   "frames": 241,
+   "name": "点击回应-开心跃动",
+   "category": "click",
+   "loop": false,
+   "crop": [
+    169,
+    19,
+    303,
+    330
+   ],
+   "foot": [
+    153.1,
+    330
+   ]
+  },
+  "giggle": {
+   "dir": "core/anim/click/点击回应-挠痒咯咯笑",
+   "frames": 241,
+   "name": "点击回应-挠痒咯咯笑",
+   "category": "click",
+   "loop": false,
+   "crop": [
+    196,
+    16,
+    254,
+    330
+   ],
+   "foot": [
+    122.0,
+    330
+   ]
+  },
+  "drag": {
+   "dir": "core/anim/drag/被鼠标拖拽悬空反馈",
+   "frames": 241,
+   "name": "被鼠标拖拽悬空反馈",
+   "category": "drag",
+   "loop": false,
+   "crop": [
+    191,
+    18,
+    273,
+    330
+   ],
+   "foot": [
+    135.7,
+    330
+   ]
+  },
+  "idle": {
+   "dir": "core/anim/idle/待机呼吸休闲",
+   "frames": 241,
+   "name": "待机呼吸休闲",
+   "category": "idle",
+   "loop": true,
+   "crop": [
+    183,
+    16,
+    266,
+    330
+   ],
+   "foot": [
+    138.5,
+    330
+   ]
+  },
+  "move-run": {
+   "dir": "core/anim/move/左转奔跑",
+   "frames": 241,
+   "name": "左转奔跑",
+   "category": "move",
+   "loop": false,
+   "crop": [
+    119,
+    21,
+    366,
+    330
+   ],
+   "foot": [
+    206.1,
+    330
+   ]
+  },
+  "move-float": {
+   "dir": "core/anim/move/漂浮踏步",
+   "frames": 241,
+   "name": "漂浮踏步",
+   "category": "move",
+   "loop": false,
+   "crop": [
+    199,
+    19,
+    246,
+    330
+   ],
+   "foot": [
+    123.7,
+    330
+   ]
+  },
+  "move-crab": {
+   "dir": "core/anim/move/螃蟹走路",
+   "frames": 241,
+   "name": "螃蟹走路",
+   "category": "move",
+   "loop": false,
+   "crop": [
+    174,
+    17,
+    288,
+    330
+   ],
+   "foot": [
+    144.2,
+    330
+   ]
+  },
+  "turn": {
+   "dir": "core/anim/turn/东张西望",
+   "frames": 241,
+   "name": "东张西望",
+   "category": "turn",
+   "loop": false,
+   "crop": [
+    196,
+    16,
+    258,
+    330
+   ],
+   "foot": [
+    126.5,
+    330
+   ]
+  },
+  "coin-empty": {
+   "dir": "extra1/anim/events/余额-分文不剩",
+   "frames": 241,
+   "name": "余额-分文不剩",
+   "category": "events",
+   "loop": false,
+   "crop": [
+    124,
+    25,
+    444,
+    330
+   ],
+   "foot": [
+    182.8,
+    330
+   ]
+  },
+  "coin-count": {
+   "dir": "extra1/anim/events/余额-数金皱眉",
+   "frames": 241,
+   "name": "余额-数金皱眉",
+   "category": "events",
+   "loop": false,
+   "crop": [
+    197,
+    16,
+    249,
+    330
+   ],
+   "foot": [
+    124.5,
+    330
+   ]
+  },
+  "coin-broke": {
+   "dir": "extra1/anim/events/余额-袋空如洗",
+   "frames": 241,
+   "name": "余额-袋空如洗",
+   "category": "events",
+   "loop": false,
+   "crop": [
+    47,
+    30,
+    527,
+    330
+   ],
+   "foot": [
+    268.1,
+    330
+   ]
+  },
+  "coin-jingle": {
+   "dir": "extra1/anim/events/余额-金袋叮当",
+   "frames": 241,
+   "name": "余额-金袋叮当",
+   "category": "events",
+   "loop": false,
+   "crop": [
+    118,
+    30,
+    442,
+    330
+   ],
+   "foot": [
+    204.8,
+    330
+   ]
+  },
+  "coin-normal": {
+   "dir": "extra1/anim/events/余额-钱袋如常",
+   "frames": 241,
+   "name": "余额-钱袋如常",
+   "category": "events",
+   "loop": false,
+   "crop": [
+    116,
+    30,
+    443,
+    330
+   ],
+   "foot": [
+    200.0,
+    330
+   ]
+  },
+  "coin-full": {
+   "dir": "extra1/anim/events/余额-钱袋满溢",
+   "frames": 241,
+   "name": "余额-钱袋满溢",
+   "category": "events",
+   "loop": false,
+   "crop": [
+    55,
+    30,
+    549,
+    330
+   ],
+   "foot": [
+    262.3,
+    330
+   ]
+  },
+  "doze": {
+   "dir": "extra1/anim/random/原地小憩沉眠",
+   "frames": 241,
+   "name": "原地小憩沉眠",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    194,
+    16,
+    248,
+    330
+   ],
+   "foot": [
+    125.3,
+    330
+   ]
+  },
+  "think": {
+   "dir": "extra3/anim/random/工作状态-思考冒泡",
+   "frames": 241,
+   "name": "工作状态-思考冒泡",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    171,
+    17,
+    277,
+    330
+   ],
+   "foot": [
+    142.7,
+    330
+   ]
+  },
+  "sing": {
+   "dir": "extra3/anim/random/悠闲哼歌",
+   "frames": 241,
+   "name": "悠闲哼歌",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    125,
+    19,
+    382,
+    330
+   ],
+   "foot": [
+    197.8,
+    330
+   ]
+  },
+  "tea": {
+   "dir": "extra4/anim/random/摇扇纳凉",
+   "frames": 241,
+   "name": "摇扇纳凉",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    140,
+    18,
+    346,
+    330
+   ],
+   "foot": [
+    185.3,
+    330
+   ]
+  },
+  "tail": {
+   "dir": "extra5/anim/random/用鲸鱼尾巴拍打地面",
+   "frames": 241,
+   "name": "用鲸鱼尾巴拍打地面",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    195,
+    16,
+    288,
+    330
+   ],
+   "foot": [
+    140.3,
+    330
+   ]
+  },
+  "bubble": {
+   "dir": "extra5/anim/random/碎碎念-发呆碎碎念",
+   "frames": 241,
+   "name": "碎碎念-发呆碎碎念",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    194,
+    16,
+    250,
+    330
+   ],
+   "foot": [
+    131.3,
+    330
+   ]
+  },
+  "r01": {
+   "dir": "extra1/anim/random/三球抛接",
+   "frames": 241,
+   "name": "三球抛接",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    198,
+    18,
+    248,
+    330
+   ],
+   "foot": [
+    127.5,
+    330
+   ]
+  },
+  "r02": {
+   "dir": "extra1/anim/random/下五子棋",
+   "frames": 241,
+   "name": "下五子棋",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    191,
+    30,
+    253,
+    330
+   ],
+   "foot": [
+    127.4,
+    330
+   ]
+  },
+  "r03": {
+   "dir": "extra1/anim/random/中秋赏月吃月饼",
+   "frames": 241,
+   "name": "中秋赏月吃月饼",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    176,
+    17,
+    431,
+    330
+   ],
+   "foot": [
+    142.1,
+    330
+   ]
+  },
+  "r04": {
+   "dir": "extra1/anim/random/优雅女仆舞",
+   "frames": 241,
+   "name": "优雅女仆舞",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    196,
+    18,
+    282,
+    330
+   ],
+   "foot": [
+    125.9,
+    330
+   ]
+  },
+  "r05": {
+   "dir": "extra1/anim/random/偷吃零食被抓住",
+   "frames": 241,
+   "name": "偷吃零食被抓住",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    198,
+    17,
+    252,
+    330
+   ],
+   "foot": [
+    130.0,
+    330
+   ]
+  },
+  "r06": {
+   "dir": "extra1/anim/random/写代码",
+   "frames": 241,
+   "name": "写代码",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    198,
+    16,
+    246,
+    330
+   ],
+   "foot": [
+    129.0,
+    330
+   ]
+  },
+  "r07": {
+   "dir": "extra1/anim/random/写福字",
+   "frames": 241,
+   "name": "写福字",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    156,
+    17,
+    289,
+    330
+   ],
+   "foot": [
+    165.3,
+    330
+   ]
+  },
+  "r08": {
+   "dir": "extra1/anim/random/凭空生花",
+   "frames": 241,
+   "name": "凭空生花",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    134,
+    26,
+    424,
+    330
+   ],
+   "foot": [
+    194.7,
+    330
+   ]
+  },
+  "r09": {
+   "dir": "extra1/anim/random/动物环绕",
+   "frames": 241,
+   "name": "动物环绕",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    52,
+    30,
+    518,
+    330
+   ],
+   "foot": [
+    264.7,
+    330
+   ]
+  },
+  "r10": {
+   "dir": "extra1/anim/random/原地专心玩魔方",
+   "frames": 241,
+   "name": "原地专心玩魔方",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    162,
+    16,
+    284,
+    330
+   ],
+   "foot": [
+    162.2,
+    330
+   ]
+  },
+  "r11": {
+   "dir": "extra1/anim/random/原地敲击桌面互动",
+   "frames": 241,
+   "name": "原地敲击桌面互动",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    190,
+    15,
+    250,
+    330
+   ],
+   "foot": [
+    127.1,
+    330
+   ]
+  },
+  "r12": {
+   "dir": "extra1/anim/random/原地跳跃抓碎头顶物品",
+   "frames": 241,
+   "name": "原地跳跃抓碎头顶物品",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    90,
+    22,
+    459,
+    330
+   ],
+   "foot": [
+    232.3,
+    330
+   ]
+  },
+  "r13": {
+   "dir": "extra2/anim/random/原地蹲下玩玩具汽车",
+   "frames": 241,
+   "name": "原地蹲下玩玩具汽车",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    143,
+    30,
+    425,
+    330
+   ],
+   "foot": [
+    174.6,
+    330
+   ]
+  },
+  "r14": {
+   "dir": "extra2/anim/random/原地重力下蹲压缩",
+   "frames": 241,
+   "name": "原地重力下蹲压缩",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    194,
+    22,
+    273,
+    330
+   ],
+   "foot": [
+    134.8,
+    330
+   ]
+  },
+  "r15": {
+   "dir": "extra2/anim/random/变鸽子",
+   "frames": 241,
+   "name": "变鸽子",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    99,
+    18,
+    388,
+    330
+   ],
+   "foot": [
+    226.5,
+    330
+   ]
+  },
+  "r16": {
+   "dir": "extra2/anim/random/可爱宅舞",
+   "frames": 241,
+   "name": "可爱宅舞",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    196,
+    17,
+    259,
+    330
+   ],
+   "foot": [
+    127.9,
+    330
+   ]
+  },
+  "r17": {
+   "dir": "extra2/anim/random/吃Token",
+   "frames": 241,
+   "name": "吃Token",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    124,
+    18,
+    393,
+    330
+   ],
+   "foot": [
+    197.2,
+    330
+   ]
+  },
+  "r18": {
+   "dir": "extra2/anim/random/吃冰淇淋融化",
+   "frames": 241,
+   "name": "吃冰淇淋融化",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    196,
+    21,
+    248,
+    330
+   ],
+   "foot": [
+    126.2,
+    330
+   ]
+  },
+  "r19": {
+   "dir": "extra2/anim/random/吃午餐",
+   "frames": 241,
+   "name": "吃午餐",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    192,
+    18,
+    252,
+    330
+   ],
+   "foot": [
+    128.4,
+    330
+   ]
+  },
+  "r20": {
+   "dir": "extra2/anim/random/吃大闸蟹",
+   "frames": 241,
+   "name": "吃大闸蟹",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    190,
+    26,
+    275,
+    330
+   ],
+   "foot": [
+    138.7,
+    330
+   ]
+  },
+  "r21": {
+   "dir": "extra2/anim/random/吃年糕",
+   "frames": 241,
+   "name": "吃年糕",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    190,
+    16,
+    255,
+    330
+   ],
+   "foot": [
+    125.5,
+    330
+   ]
+  },
+  "r22": {
+   "dir": "extra2/anim/random/吃早餐",
+   "frames": 241,
+   "name": "吃早餐",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    198,
+    15,
+    244,
+    330
+   ],
+   "foot": [
+    125.3,
+    330
+   ]
+  },
+  "r23": {
+   "dir": "extra2/anim/random/吃晚餐",
+   "frames": 241,
+   "name": "吃晚餐",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    79,
+    21,
+    480,
+    330
+   ],
+   "foot": [
+    235.5,
+    330
+   ]
+  },
+  "r24": {
+   "dir": "extra2/anim/random/吃汤圆",
+   "frames": 241,
+   "name": "吃汤圆",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    199,
+    15,
+    247,
+    330
+   ],
+   "foot": [
+    126.4,
+    330
+   ]
+  },
+  "r25": {
+   "dir": "extra2/anim/random/吃白饭",
+   "frames": 241,
+   "name": "吃白饭",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    191,
+    23,
+    252,
+    330
+   ],
+   "foot": [
+    137.9,
+    330
+   ]
+  },
+  "r26": {
+   "dir": "extra2/anim/random/吃粽子",
+   "frames": 241,
+   "name": "吃粽子",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    197,
+    18,
+    252,
+    330
+   ],
+   "foot": [
+    121.7,
+    330
+   ]
+  },
+  "r27": {
+   "dir": "extra2/anim/random/吃糖葫芦",
+   "frames": 241,
+   "name": "吃糖葫芦",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    195,
+    16,
+    253,
+    330
+   ],
+   "foot": [
+    132.2,
+    330
+   ]
+  },
+  "r28": {
+   "dir": "extra2/anim/random/吃腊八粥",
+   "frames": 241,
+   "name": "吃腊八粥",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    190,
+    15,
+    252,
+    330
+   ],
+   "foot": [
+    129.4,
+    330
+   ]
+  },
+  "r29": {
+   "dir": "extra2/anim/random/吃西瓜",
+   "frames": 241,
+   "name": "吃西瓜",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    193,
+    17,
+    255,
+    330
+   ],
+   "foot": [
+    131.7,
+    330
+   ]
+  },
+  "r30": {
+   "dir": "extra2/anim/random/吃重阳糕",
+   "frames": 241,
+   "name": "吃重阳糕",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    200,
+    16,
+    244,
+    330
+   ],
+   "foot": [
+    121.1,
+    330
+   ]
+  },
+  "r31": {
+   "dir": "extra2/anim/random/吃长寿面",
+   "frames": 241,
+   "name": "吃长寿面",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    111,
+    15,
+    343,
+    330
+   ],
+   "foot": [
+    211.9,
+    330
+   ]
+  },
+  "r32": {
+   "dir": "extra3/anim/random/吃青团",
+   "frames": 241,
+   "name": "吃青团",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    195,
+    16,
+    250,
+    330
+   ],
+   "foot": [
+    129.3,
+    330
+   ]
+  },
+  "r33": {
+   "dir": "extra3/anim/random/吃饺子",
+   "frames": 241,
+   "name": "吃饺子",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    180,
+    27,
+    268,
+    330
+   ],
+   "foot": [
+    110.6,
+    330
+   ]
+  },
+  "r34": {
+   "dir": "extra3/anim/random/吹气球",
+   "frames": 241,
+   "name": "吹气球",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    0,
+    30,
+    640,
+    330
+   ],
+   "foot": [
+    326.3,
+    330
+   ]
+  },
+  "r35": {
+   "dir": "extra3/anim/random/吹笛子",
+   "frames": 241,
+   "name": "吹笛子",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    53,
+    21,
+    518,
+    330
+   ],
+   "foot": [
+    266.0,
+    330
+   ]
+  },
+  "r36": {
+   "dir": "extra3/anim/random/哈欠连天",
+   "frames": 241,
+   "name": "哈欠连天",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    194,
+    16,
+    251,
+    330
+   ],
+   "foot": [
+    127.3,
+    330
+   ]
+  },
+  "r37": {
+   "dir": "extra3/anim/random/堆雪人",
+   "frames": 241,
+   "name": "堆雪人",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    182,
+    28,
+    315,
+    330
+   ],
+   "foot": [
+    144.6,
+    330
+   ]
+  },
+  "r38": {
+   "dir": "extra3/anim/random/大口吃零食",
+   "frames": 241,
+   "name": "大口吃零食",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    10,
+    30,
+    611,
+    330
+   ],
+   "foot": [
+    303.6,
+    330
+   ]
+  },
+  "r39": {
+   "dir": "extra3/anim/random/女仆屈膝礼仪",
+   "frames": 241,
+   "name": "女仆屈膝礼仪",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    198,
+    20,
+    243,
+    330
+   ],
+   "foot": [
+    124.1,
+    330
+   ]
+  },
+  "r40": {
+   "dir": "extra3/anim/random/小幅度原地360度旋转展示",
+   "frames": 241,
+   "name": "小幅度原地360度旋转展示",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    183,
+    17,
+    291,
+    330
+   ],
+   "foot": [
+    141.6,
+    330
+   ]
+  },
+  "r41": {
+   "dir": "extra3/anim/random/小提琴演奏",
+   "frames": 241,
+   "name": "小提琴演奏",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    129,
+    17,
+    356,
+    330
+   ],
+   "foot": [
+    178.0,
+    330
+   ]
+  },
+  "r42": {
+   "dir": "extra3/anim/random/工作状态-原地踱步张望",
+   "frames": 241,
+   "name": "工作状态-原地踱步张望",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    172,
+    18,
+    280,
+    330
+   ],
+   "foot": [
+    149.1,
+    330
+   ]
+  },
+  "r43": {
+   "dir": "extra3/anim/random/工作状态-垂头叹气冒汗",
+   "frames": 118,
+   "name": "工作状态-垂头叹气冒汗",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    146,
+    15,
+    295,
+    330
+   ],
+   "foot": [
+    175.6,
+    330
+   ]
+  },
+  "r44": {
+   "dir": "extra3/anim/random/工作状态-忙碌点按",
+   "frames": 241,
+   "name": "工作状态-忙碌点按",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    170,
+    19,
+    284,
+    330
+   ],
+   "foot": [
+    147.2,
+    330
+   ]
+  },
+  "r45": {
+   "dir": "extra3/anim/random/工作状态-清点归档",
+   "frames": 241,
+   "name": "工作状态-清点归档",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    201,
+    15,
+    239,
+    330
+   ],
+   "foot": [
+    118.0,
+    330
+   ]
+  },
+  "r46": {
+   "dir": "extra3/anim/random/工作状态-雀跃庆祝",
+   "frames": 241,
+   "name": "工作状态-雀跃庆祝",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    161,
+    18,
+    325,
+    330
+   ],
+   "foot": [
+    160.4,
+    330
+   ]
+  },
+  "r47": {
+   "dir": "extra3/anim/random/扑克魔术",
+   "frames": 241,
+   "name": "扑克魔术",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    166,
+    15,
+    284,
+    330
+   ],
+   "foot": [
+    156.1,
+    330
+   ]
+  },
+  "r48": {
+   "dir": "extra3/anim/random/打瞌睡被惊醒",
+   "frames": 241,
+   "name": "打瞌睡被惊醒",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    188,
+    18,
+    257,
+    330
+   ],
+   "foot": [
+    134.7,
+    330
+   ]
+  },
+  "r49": {
+   "dir": "extra4/anim/random/抽陀螺",
+   "frames": 241,
+   "name": "抽陀螺",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    150,
+    28,
+    301,
+    330
+   ],
+   "foot": [
+    164.5,
+    330
+   ]
+  },
+  "r50": {
+   "dir": "extra4/anim/random/拆礼物",
+   "frames": 241,
+   "name": "拆礼物",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    141,
+    25,
+    346,
+    330
+   ],
+   "foot": [
+    180.2,
+    330
+   ]
+  },
+  "r51": {
+   "dir": "extra4/anim/random/插茱萸赏菊",
+   "frames": 241,
+   "name": "插茱萸赏菊",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    196,
+    15,
+    255,
+    330
+   ],
+   "foot": [
+    127.2,
+    330
+   ]
+  },
+  "r52": {
+   "dir": "extra4/anim/random/撸猫",
+   "frames": 241,
+   "name": "撸猫",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    197,
+    15,
+    247,
+    330
+   ],
+   "foot": [
+    123.5,
+    330
+   ]
+  },
+  "r53": {
+   "dir": "extra4/anim/random/收红包",
+   "frames": 241,
+   "name": "收红包",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    195,
+    15,
+    257,
+    330
+   ],
+   "foot": [
+    123.9,
+    330
+   ]
+  },
+  "r54": {
+   "dir": "extra4/anim/random/放孔明灯",
+   "frames": 241,
+   "name": "放孔明灯",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    148,
+    30,
+    303,
+    330
+   ],
+   "foot": [
+    175.8,
+    330
+   ]
+  },
+  "r55": {
+   "dir": "extra4/anim/random/放河灯",
+   "frames": 241,
+   "name": "放河灯",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    196,
+    16,
+    250,
+    330
+   ],
+   "foot": [
+    121.1,
+    330
+   ]
+  },
+  "r56": {
+   "dir": "extra4/anim/random/放烟花",
+   "frames": 241,
+   "name": "放烟花",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    0,
+    30,
+    640,
+    330
+   ],
+   "foot": [
+    328.5,
+    330
+   ]
+  },
+  "r57": {
+   "dir": "extra4/anim/random/放风筝",
+   "frames": 241,
+   "name": "放风筝",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    88,
+    21,
+    439,
+    330
+   ],
+   "foot": [
+    242.4,
+    330
+   ]
+  },
+  "r58": {
+   "dir": "extra4/anim/random/整体换装试色",
+   "frames": 241,
+   "name": "整体换装试色",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    175,
+    16,
+    314,
+    330
+   ],
+   "foot": [
+    147.7,
+    330
+   ]
+  },
+  "r59": {
+   "dir": "extra4/anim/random/是啊，吃什么",
+   "frames": 241,
+   "name": "是啊，吃什么",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    24,
+    16,
+    603,
+    330
+   ],
+   "foot": [
+    307.6,
+    330
+   ]
+  },
+  "r60": {
+   "dir": "extra4/anim/random/晨间刷牙",
+   "frames": 241,
+   "name": "晨间刷牙",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    184,
+    30,
+    264,
+    330
+   ],
+   "foot": [
+    136.9,
+    330
+   ]
+  },
+  "r61": {
+   "dir": "extra4/anim/random/涮火锅",
+   "frames": 241,
+   "name": "涮火锅",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    189,
+    30,
+    258,
+    330
+   ],
+   "foot": [
+    109.2,
+    330
+   ]
+  },
+  "r62": {
+   "dir": "extra4/anim/random/深度思考碎碎念",
+   "frames": 241,
+   "name": "深度思考碎碎念",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    71,
+    21,
+    504,
+    330
+   ],
+   "foot": [
+    246.7,
+    330
+   ]
+  },
+  "r63": {
+   "dir": "extra4/anim/random/照镜子",
+   "frames": 241,
+   "name": "照镜子",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    183,
+    16,
+    291,
+    330
+   ],
+   "foot": [
+    142.7,
+    330
+   ]
+  },
+  "r64": {
+   "dir": "extra4/anim/random/玩水枪",
+   "frames": 241,
+   "name": "玩水枪",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    2,
+    30,
+    624,
+    330
+   ],
+   "foot": [
+    322.1,
+    330
+   ]
+  },
+  "r65": {
+   "dir": "extra4/anim/random/玩游戏气急败坏",
+   "frames": 241,
+   "name": "玩游戏气急败坏",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    153,
+    29,
+    311,
+    330
+   ],
+   "foot": [
+    144.8,
+    330
+   ]
+  },
+  "r66": {
+   "dir": "extra5/anim/random/碎碎念-对屏碎碎念",
+   "frames": 241,
+   "name": "碎碎念-对屏碎碎念",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    202,
+    16,
+    237,
+    330
+   ],
+   "foot": [
+    118.8,
+    330
+   ]
+  },
+  "r67": {
+   "dir": "extra5/anim/random/碎碎念-擦桌碎碎念",
+   "frames": 241,
+   "name": "碎碎念-擦桌碎碎念",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    188,
+    15,
+    252,
+    330
+   ],
+   "foot": [
+    128.3,
+    330
+   ]
+  },
+  "r68": {
+   "dir": "extra5/anim/random/穿针乞巧",
+   "frames": 241,
+   "name": "穿针乞巧",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    174,
+    16,
+    379,
+    330
+   ],
+   "foot": [
+    128.6,
+    330
+   ]
+  },
+  "r69": {
+   "dir": "extra5/anim/random/舞狮头",
+   "frames": 241,
+   "name": "舞狮头",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    190,
+    16,
+    266,
+    330
+   ],
+   "foot": [
+    131.5,
+    330
+   ]
+  },
+  "r70": {
+   "dir": "extra5/anim/random/荡秋千",
+   "frames": 241,
+   "name": "荡秋千",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    180,
+    19,
+    303,
+    330
+   ],
+   "foot": [
+    143.3,
+    330
+   ]
+  },
+  "r71": {
+   "dir": "extra5/anim/random/萌化小幽灵",
+   "frames": 241,
+   "name": "萌化小幽灵",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    165,
+    18,
+    313,
+    330
+   ],
+   "foot": [
+    154.1,
+    330
+   ]
+  },
+  "r72": {
+   "dir": "extra5/anim/random/蓝鲸现世",
+   "frames": 241,
+   "name": "蓝鲸现世",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    109,
+    17,
+    385,
+    330
+   ],
+   "foot": [
+    215.5,
+    330
+   ]
+  },
+  "r73": {
+   "dir": "extra5/anim/random/蝴蝶蜜蜂环绕头顶开花",
+   "frames": 241,
+   "name": "蝴蝶蜜蜂环绕头顶开花",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    0,
+    24,
+    640,
+    330
+   ],
+   "foot": [
+    318.9,
+    330
+   ]
+  },
+  "r74": {
+   "dir": "extra5/anim/random/被吓一跳",
+   "frames": 241,
+   "name": "被吓一跳",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    199,
+    17,
+    245,
+    330
+   ],
+   "foot": [
+    121.7,
+    330
+   ]
+  },
+  "r75": {
+   "dir": "extra5/anim/random/被落叶淹没",
+   "frames": 241,
+   "name": "被落叶淹没",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    0,
+    30,
+    640,
+    330
+   ],
+   "foot": [
+    326.5,
+    330
+   ]
+  },
+  "r76": {
+   "dir": "extra5/anim/random/装点圣诞树",
+   "frames": 241,
+   "name": "装点圣诞树",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    58,
+    30,
+    460,
+    330
+   ],
+   "foot": [
+    229.3,
+    330
+   ]
+  },
+  "r77": {
+   "dir": "extra5/anim/random/讨糖南瓜灯",
+   "frames": 241,
+   "name": "讨糖南瓜灯",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    189,
+    18,
+    271,
+    330
+   ],
+   "foot": [
+    129.9,
+    330
+   ]
+  },
+  "r78": {
+   "dir": "extra5/anim/random/超大伸懒腰",
+   "frames": 241,
+   "name": "超大伸懒腰",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    199,
+    16,
+    244,
+    330
+   ],
+   "foot": [
+    128.2,
+    330
+   ]
+  },
+  "r79": {
+   "dir": "extra5/anim/random/踢毽子",
+   "frames": 241,
+   "name": "踢毽子",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    190,
+    18,
+    268,
+    330
+   ],
+   "foot": [
+    133.6,
+    330
+   ]
+  },
+  "r80": {
+   "dir": "extra5/anim/random/轻快摇摆舞",
+   "frames": 241,
+   "name": "轻快摇摆舞",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    195,
+    16,
+    274,
+    330
+   ],
+   "foot": [
+    129.4,
+    330
+   ]
+  },
+  "r81": {
+   "dir": "extra5/anim/random/轻快记录",
+   "frames": 241,
+   "name": "轻快记录",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    180,
+    16,
+    267,
+    330
+   ],
+   "foot": [
+    144.1,
+    330
+   ]
+  },
+  "r82": {
+   "dir": "extra6/anim/random/骑木马",
+   "frames": 241,
+   "name": "骑木马",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    134,
+    30,
+    378,
+    330
+   ],
+   "foot": [
+    181.6,
+    330
+   ]
+  },
+  "r83": {
+   "dir": "extra6/anim/random/鲸鱼吐泡泡特效",
+   "frames": 241,
+   "name": "鲸鱼吐泡泡特效",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    99,
+    18,
+    349,
+    330
+   ],
+   "foot": [
+    224.6,
+    330
+   ]
+  }
+ }
+}
