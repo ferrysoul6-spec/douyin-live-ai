@@ -75,9 +75,10 @@ live-ai:
     welcome-per-minute: ${THROTTLE_WELCOME_PER_MINUTE:15}
     # 命中 FAQ 直接返回答案，不调 LLM
     faq-shortcut: true
-    # 点赞感谢：观众连点是高频事件，攒够 min-count 才说，且距上次致谢超过冷却秒数
+    # 点赞感谢：观众连点是高频事件，攒够 min-count 才说，且距上次致谢超过冷却秒数。
+    # min-count=1 表示每有点赞就答谢一次（实际节奏由冷却控制，不会真刷屏）
     like-thank-cooldown-seconds: ${THROTTLE_LIKE_THANK_COOLDOWN_SECONDS:45}
-    like-thank-min-count: ${THROTTLE_LIKE_THANK_MIN_COUNT:5}
+    like-thank-min-count: ${THROTTLE_LIKE_THANK_MIN_COUNT:1}
   tts:
     # 语音回复总开关；关闭后只下发文本
     enabled: ${TTS_ENABLED:true}

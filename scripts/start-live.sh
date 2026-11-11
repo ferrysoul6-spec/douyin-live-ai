@@ -307,6 +307,19 @@ preflight() {
   [ -n "$workshop" ] && export SEEDTTS_API_KEY="$workshop"
   [ -n "$tts_provider" ] && export TTS_PROVIDER="$tts_provider"
 
+  # 其余调参项也透传：.env 里写 THROTTLE_*/STAGE_*/WARMUP_*/MEMORY_*/MUSIC_*
+  # 就能覆盖 application.yml 的默认值，不用每次都改脚本。
+  # 逐个读文件再 export（不 source，避免 .env 里的特殊字符被执行）。
+  if [ -f .env ]; then
+    while IFS='=' read -r k v; do
+      case "$k" in
+        THROTTLE_*|STAGE_*|WARMUP_*|MEMORY_*|MUSIC_*|TTS_ENABLED|ARK_MODEL|ARK_FALLBACK_MODELS|ARK_FALLBACK_ENABLED|ARK_DISABLE_THINKING)
+          [ -n "$v" ] && export "$k=$v"
+          ;;
+      esac
+    done < .env
+  fi
+
   if [ "$ACTION" = "start" ]; then
     [ -n "${RAPIDAPI_KEY:-}" ] || fail "缺 RAPIDAPI_KEY（连直播间必需，写在 .env）"
     [ -f "$VIDEO" ] || warn "找不到循环画面 ${VIDEO}（推流需自备画面源）"
