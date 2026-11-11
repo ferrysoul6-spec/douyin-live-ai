@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,14 @@ public class ReplyService {
     private static final String SENTENCE_ENDS = "。！？!?";
     /** 停顿标点：只能退而求其次，收尾后要把标点本身去掉。 */
     private static final String PAUSE_ENDS = "，、；,;";
+
+    /**
+     * 表演口令：单独一个 1，或「打1 / 扣1 / 来1 / 上1 / 刷1 / 要1」。
+     *
+     * <p>只认这一种短口令，不认「11」「1！」之外的闲聊，避免把正常发言当指令。
+     * 匹配前会去掉空白，所以「打 1」「1 」都能命中。
+     */
+    private static final Pattern SHOW_COMMAND = Pattern.compile("^(打|扣|来|上|刷|要)?1$");
 
     /** 人设文件缓存：按 mtime 失效，既省掉每轮磁盘 IO，又能保留「改完即生效」。 */
     private volatile String personaCache;
@@ -177,6 +186,19 @@ public class ReplyService {
         }
         if (!rateLimiter.tryReply(event.getRoomId(), event.getOpenid())) {
             return OutboundMessage.suppressed("用户回复冷却中");
+        }
+
+        // 「打1」这类口令：表演舞狮头。放在点歌和 FAQ 之前——它不需要 LLM，
+        // 也不能掉进闲聊分支（否则每个跟着打 1 的人都烧一次 token、还要等 1s）
+        if (isShowCommand(content)) {
+            if (!rateLimiter.tryShow()) {
+                return OutboundMessage.suppressed("表演指令冷却中");
+            }
+            stage.playFull("lion");
+            OutboundMessage msg = OutboundMessage.of("好嘞，舞狮头给你安排上！",
+                    OutboundMessage.Display.DANMU, OutboundMessage.Source.INTERACT);
+            msg.setToNickname(safeNickname(event));
+            return msg;
         }
 
         Optional<MusicService.Command> musicCommand = music.parse(content);
@@ -412,6 +434,14 @@ public class ReplyService {
                 OutboundMessage.Source.FALLBACK);
         msg.setToNickname(safeNickname(event));
         return msg;
+    }
+
+    /** 是否表演口令（打1看舞狮头这类）。匹配前去掉空白，「打 1」「1 」都算。 */
+    static boolean isShowCommand(String content) {
+        if (content == null) {
+            return false;
+        }
+        return SHOW_COMMAND.matcher(content.replaceAll("\\s+", "")).matches();
     }
 
     private String safeNickname(LiveEvent event) {

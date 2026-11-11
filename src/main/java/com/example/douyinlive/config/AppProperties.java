@@ -231,6 +231,13 @@ public class AppProperties {
         private int likeThankCooldownSeconds = 45;
         /** 累计多少个赞才值得感谢一次。 */
         private int likeThankMinCount = 5;
+        /**
+         * 表演口令（观众打「1」看舞狮头）的全局冷却秒数。
+         *
+         * <p>口令是全场合唱式的，一个人发会带动一片；每次又要播一个十秒的动作，
+         * 不节流就会连着播十几遍，画面和弹幕一起被刷满。
+         */
+        private int showCooldownSeconds = 45;
 
         public int getWelcomeDedupeSeconds() { return welcomeDedupeSeconds; }
         public void setWelcomeDedupeSeconds(int s) { this.welcomeDedupeSeconds = s; }
@@ -250,6 +257,8 @@ public class AppProperties {
         public void setLikeThankCooldownSeconds(int s) { this.likeThankCooldownSeconds = s; }
         public int getLikeThankMinCount() { return likeThankMinCount; }
         public void setLikeThankMinCount(int n) { this.likeThankMinCount = n; }
+        public int getShowCooldownSeconds() { return showCooldownSeconds; }
+        public void setShowCooldownSeconds(int s) { this.showCooldownSeconds = s; }
     }
 
     /**

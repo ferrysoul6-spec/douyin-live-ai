@@ -58,6 +58,7 @@ class ReplyServiceOrchestrationTest {
         when(limiter.tryBroadcastWelcome()).thenReturn(true);
         when(limiter.tryAcquireLlm(false)).thenReturn(true);
         when(limiter.tryAcquireLlm(true)).thenReturn(true);
+        when(limiter.tryShow()).thenReturn(true);
     }
 
     @Test
@@ -171,6 +172,42 @@ class ReplyServiceOrchestrationTest {
         // 冷却中继续累计，下次一起说——但不能每条赞都播一遍
         assertThat(second.isSuppressed()).isTrue();
         assertThat(second.getSuppressReason()).contains("冷却");
+    }
+
+    @Test
+    void 打1触发舞狮头且不走LLM() {
+        OutboundMessage msg = service.handle(event(LiveEvent.Type.COMMENT, "打1", null));
+
+        assertThat(msg.isSuppressed()).isFalse();
+        assertThat(msg.getSource()).isEqualTo(OutboundMessage.Source.INTERACT);
+        assertThat(msg.getText()).contains("舞狮头");
+        verify(stage).playFull("lion");
+        // 口令不该烧 token，也不该让观众等 LLM
+        verify(llm, never()).chat(anyString(), anyString());
+    }
+
+    @Test
+    void 表演口令冷却中不再表演() {
+        when(limiter.tryShow()).thenReturn(false);
+
+        OutboundMessage msg = service.handle(event(LiveEvent.Type.COMMENT, "1", null));
+
+        // 全场合唱式口令，冷却期内直接丢弃：不回复也不重复播十秒的动作
+        assertThat(msg.isSuppressed()).isTrue();
+        assertThat(msg.getSuppressReason()).contains("冷却");
+        verify(stage, never()).playFull(anyString());
+    }
+
+    @Test
+    void 只有单独的数字1才算表演口令() {
+        assertThat(ReplyService.isShowCommand("1")).isTrue();
+        assertThat(ReplyService.isShowCommand("打1")).isTrue();
+        assertThat(ReplyService.isShowCommand("打 1")).isTrue();
+        assertThat(ReplyService.isShowCommand("扣1")).isTrue();
+        // 闲聊里出现的 1 不算，否则正常发言会被当成口令
+        assertThat(ReplyService.isShowCommand("11")).isFalse();
+        assertThat(ReplyService.isShowCommand("我打1个")).isFalse();
+        assertThat(ReplyService.isShowCommand("你好")).isFalse();
     }
 
     @Test

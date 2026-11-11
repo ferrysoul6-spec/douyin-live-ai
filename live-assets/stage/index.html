@@ -196,11 +196,28 @@
     slot.drawn = slot.pos;
   }
 
+  /** 重新拉清单。后端新加了动作（比如「打1」触发的舞狮头）时，不必去 OBS 里刷页面。 */
+  async function reloadManifest() {
+    try {
+      const res = await fetch('/stage/manifest-shenshen.json', { cache: 'no-cache' });
+      if (!res.ok) return;
+      manifest = await res.json();
+      fps = manifest.fps || 24;
+    } catch (e) {
+      /* 拿不到就继续用旧的 */
+    }
+  }
+
   async function setAction(action) {
     const name = action || 'idle';
     if (name === current) return;
-    if (!manifest || !manifest.clips[name]) {
-      // 这个名字素材包里没有（比如后端配了别的 idle 动作），退回 idle
+    if (!manifest) return;
+    if (!manifest.clips[name]) {
+      // 本地清单里没有这个动作：可能后端刚加了新动作，重拉一次再判断
+      await reloadManifest();
+    }
+    if (!manifest.clips[name]) {
+      // 还是没有（后端配了素材包里不存在的名字），退回 idle
       if (name !== 'idle' && current !== 'idle') setAction('idle');
       return;
     }
@@ -263,16 +280,14 @@
   }
 
   async function boot() {
-    try {
-      const res = await fetch('/stage/manifest-shenshen.json', { cache: 'no-cache' });
-      manifest = await res.json();
-      fps = manifest.fps || 24;
-      requestAnimationFrame(pumpFrames);
-      setAction('idle');
-      tick();
-    } catch (e) {
-      console.error('[stage] 素材清单加载失败', e);
+    await reloadManifest();
+    if (!manifest) {
+      console.error('[stage] 素材清单加载失败');
+      return;
     }
+    requestAnimationFrame(pumpFrames);
+    setAction('idle');
+    tick();
   }
 
   function showBubble(from, text) {

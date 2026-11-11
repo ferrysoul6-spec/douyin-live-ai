@@ -4,6 +4,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -29,6 +30,8 @@ public class RateLimiter {
     private final Map<String, Long> lastWelcome = new ConcurrentHashMap<>();
     /** key = roomId:openid，value = 上次 AI 回复时间戳。 */
     private final Map<String, Long> lastReply = new ConcurrentHashMap<>();
+    /** 表演类口令（打1看舞狮头）的全局冷却时刻。 */
+    private final AtomicLong lastShowAt = new AtomicLong();
     /** 全局滑动窗口：记录最近一分钟内的 LLM 调用时间戳。 */
     private final Deque<Long> llmWindow = new ArrayDeque<>();
     /** 进场欢迎专用窗口。 */
@@ -65,6 +68,24 @@ public class RateLimiter {
             return false;
         }
         lastReply.put(key, now);
+        return true;
+    }
+
+    /**
+     * 取一个「表演口令」名额（打1看舞狮头这类）。
+     *
+     * <p>口令是全场合唱式的：一个人发「1」会带动一片人跟着发，而且每次要播一个
+     * 十秒的动作。不做全局冷却就会连着播十几遍，画面和弹幕一起被刷满。
+     * 冷却之内的口令直接丢弃，不回复也不表演。
+     */
+    public boolean tryShow() {
+        long now = System.currentTimeMillis();
+        long cooldownMs = Math.max(0, props.getThrottle().getShowCooldownSeconds()) * 1000L;
+        long prev = lastShowAt.get();
+        if (prev != 0 && now - prev < cooldownMs) {
+            return false;
+        }
+        lastShowAt.set(now);
         return true;
     }
 

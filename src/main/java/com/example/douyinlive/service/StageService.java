@@ -151,6 +151,15 @@ public class StageService {
     }
 
     /**
+     * 按素材清单里的真实时长播一个动作（241 帧 ≈ 10s），播完自动回 idle。
+     *
+     * <p>表演类动作要用这个而不是 2.6s 的默认值，否则只放个开头就切走。
+     */
+    public void playFull(String action) {
+        play(action, holdMsByAction.getOrDefault(action, IDLE_ACTION_HOLD_MS));
+    }
+
+    /**
      * 播放一个动作。
      *
      * @param holdMs 保持毫秒数；≤0 表示由调用方自己负责切回（如 think 等回复完成）

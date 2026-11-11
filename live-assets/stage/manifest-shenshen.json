@@ -396,6 +396,23 @@
     330
    ]
   },
+  "lion": {
+   "dir": "extra5/anim/random/舞狮头",
+   "frames": 241,
+   "name": "舞狮头",
+   "category": "random",
+   "loop": false,
+   "crop": [
+    190,
+    16,
+    266,
+    330
+   ],
+   "foot": [
+    131.5,
+    330
+   ]
+  },
   "r01": {
    "dir": "extra1/anim/random/三球抛接",
    "frames": 241,
@@ -1553,23 +1570,6 @@
    ]
   },
   "r69": {
-   "dir": "extra5/anim/random/舞狮头",
-   "frames": 241,
-   "name": "舞狮头",
-   "category": "random",
-   "loop": false,
-   "crop": [
-    190,
-    16,
-    266,
-    330
-   ],
-   "foot": [
-    131.5,
-    330
-   ]
-  },
-  "r70": {
    "dir": "extra5/anim/random/荡秋千",
    "frames": 241,
    "name": "荡秋千",
@@ -1586,7 +1586,7 @@
     330
    ]
   },
-  "r71": {
+  "r70": {
    "dir": "extra5/anim/random/萌化小幽灵",
    "frames": 241,
    "name": "萌化小幽灵",
@@ -1603,7 +1603,7 @@
     330
    ]
   },
-  "r72": {
+  "r71": {
    "dir": "extra5/anim/random/蓝鲸现世",
    "frames": 241,
    "name": "蓝鲸现世",
@@ -1620,7 +1620,7 @@
     330
    ]
   },
-  "r73": {
+  "r72": {
    "dir": "extra5/anim/random/蝴蝶蜜蜂环绕头顶开花",
    "frames": 241,
    "name": "蝴蝶蜜蜂环绕头顶开花",
@@ -1637,7 +1637,7 @@
     330
    ]
   },
-  "r74": {
+  "r73": {
    "dir": "extra5/anim/random/被吓一跳",
    "frames": 241,
    "name": "被吓一跳",
@@ -1654,7 +1654,7 @@
     330
    ]
   },
-  "r75": {
+  "r74": {
    "dir": "extra5/anim/random/被落叶淹没",
    "frames": 241,
    "name": "被落叶淹没",
@@ -1671,7 +1671,7 @@
     330
    ]
   },
-  "r76": {
+  "r75": {
    "dir": "extra5/anim/random/装点圣诞树",
    "frames": 241,
    "name": "装点圣诞树",
@@ -1688,7 +1688,7 @@
     330
    ]
   },
-  "r77": {
+  "r76": {
    "dir": "extra5/anim/random/讨糖南瓜灯",
    "frames": 241,
    "name": "讨糖南瓜灯",
@@ -1705,7 +1705,7 @@
     330
    ]
   },
-  "r78": {
+  "r77": {
    "dir": "extra5/anim/random/超大伸懒腰",
    "frames": 241,
    "name": "超大伸懒腰",
@@ -1722,7 +1722,7 @@
     330
    ]
   },
-  "r79": {
+  "r78": {
    "dir": "extra5/anim/random/踢毽子",
    "frames": 241,
    "name": "踢毽子",
@@ -1739,7 +1739,7 @@
     330
    ]
   },
-  "r80": {
+  "r79": {
    "dir": "extra5/anim/random/轻快摇摆舞",
    "frames": 241,
    "name": "轻快摇摆舞",
@@ -1756,7 +1756,7 @@
     330
    ]
   },
-  "r81": {
+  "r80": {
    "dir": "extra5/anim/random/轻快记录",
    "frames": 241,
    "name": "轻快记录",
@@ -1773,7 +1773,7 @@
     330
    ]
   },
-  "r82": {
+  "r81": {
    "dir": "extra6/anim/random/骑木马",
    "frames": 241,
    "name": "骑木马",
@@ -1790,7 +1790,7 @@
     330
    ]
   },
-  "r83": {
+  "r82": {
    "dir": "extra6/anim/random/鲸鱼吐泡泡特效",
    "frames": 241,
    "name": "鲸鱼吐泡泡特效",
