@@ -24,7 +24,17 @@ BACKEND_LOG=/tmp/douyin-live-ai-backend.log
 PLAYER_LOG=/tmp/douyin-live-ai-player.log
 MUSIC_LOG=/tmp/douyin-live-ai-music.log
 STATE_FILE="$ROOT/.live-state"
-VIRTUAL_DEV="${VIRTUAL_DEVICE:-OrayVirtualAudioDevice}"
+VIRTUAL_DEV="${VIRTUAL_DEVICE:-}"
+# 虚拟声卡默认自动探测：BlackHole 与向日葵各装各的，名字不一样，
+# 写死一个名字会在换了驱动的机器上直接启动失败。
+if [ -z "$VIRTUAL_DEV" ]; then
+  for cand in "BlackHole 2ch" "OrayVirtualAudioDevice" "BlackHole 16ch"; do
+    if SwitchAudioSource -a -t output 2>/dev/null | grep -Fxq "$cand"; then
+      VIRTUAL_DEV="$cand"; break
+    fi
+  done
+fi
+VIRTUAL_DEV="${VIRTUAL_DEV:-BlackHole 2ch}"
 BASE_URL="http://127.0.0.1:${SERVER_PORT:-8080}"
 
 # 播放器本地行为（不是业务配置，可用环境变量临时覆盖）
@@ -316,9 +326,15 @@ apply_audio_mode() {
       SwitchAudioSource -s "MacBook Pro扬声器" -t output >/dev/null 2>&1 \
         && ok "音频 → 扬声器（自己听，不推流）" ;;
     virtual)
-      SwitchAudioSource -s "$VIRTUAL_DEV" -t output >/dev/null 2>&1 \
-        && ok "音频 → ${VIRTUAL_DEV}（推流用，本机听不到）" \
-        || fail "切换失败，确认虚拟声卡 ${VIRTUAL_DEV} 已安装" ;;
+      if SwitchAudioSource -a -t output 2>/dev/null | grep -Fxq "$VIRTUAL_DEV"; then
+        # 系统输出一旦切走，本机所有声音都会进虚拟声卡（自己听不到），
+        # 所以只记 ORIG_OUT，--stop 时由 restore_audio 切回来
+        SwitchAudioSource -s "$VIRTUAL_DEV" -t output >/dev/null 2>&1 \
+          && ok "音频 → ${VIRTUAL_DEV}（推流用，本机听不到）" \
+          || fail "切到 ${VIRTUAL_DEV} 失败"
+      else
+        fail "没有可用的虚拟声卡 ${VIRTUAL_DEV}；装一个：brew install --cask blackhole-2ch，或改用 --speakers / --multi"
+      fi ;;
     multi)
       multi="$(SwitchAudioSource -a -t output 2>/dev/null | grep -iE 'multi|多输出' | head -1)"
       if [ -n "$multi" ]; then
@@ -396,16 +412,22 @@ start_music() {
 }
 
 banner() {
+  local cur audio_hint
+  cur="$(SwitchAudioSource -c -t output 2>/dev/null)"
+  if [ "$AUDIO_MODE" = "virtual" ]; then
+    audio_hint="麦克风/音频来源 → 选 ${VIRTUAL_DEV}"
+  else
+    audio_hint="麦克风/音频来源 → 选「桌面音频」（抓本机输出：${cur:-未知}）"
+  fi
   cat <<BANNER
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   AI 直播间已就绪 ✅
 
   直播伴侣里 3 步：
-   1. 画面：来源 →「媒体/视频」→ 选
-      $VIDEO
-      （勾选「循环播放」）
-   2. 声音：麦克风/音频来源 → 选 ${VIRTUAL_DEV}
+   1. 画面：来源 →「浏览器」填 ${BASE_URL}/stage（透明舞台，推荐）
+      或「媒体/视频」选 ${VIDEO}（勾选「循环播放」）
+   2. 声音：${audio_hint}
    3. 点「开始直播」
 
   观众发评论 → AI 生成回复 → 语音进直播音轨

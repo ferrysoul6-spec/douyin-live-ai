@@ -118,9 +118,20 @@ cd /tmp/DouyinLiveJava && mvn install -DskipTests      # 装出 com.douyinlive:d
 export RAPIDAPI_KEY=<订阅后复制的 X-RapidAPI-Key>
 ./scripts/start-live.sh https://v.douyin.com/xxxxxx/     # 支持分享短链、live.douyin.com/xxx、roomId、liveId
 ./scripts/start-live.sh https://v.douyin.com/xxxxxx/ --speakers   # 声音走扬声器，自己听得到不推流
+./scripts/start-live.sh https://v.douyin.com/xxxxxx/ --virtual    # 声音进虚拟声卡，给直播伴侣当音源
 ./scripts/start-live.sh --status                          # 查看运行状态
 ./scripts/start-live.sh --stop                            # 停止并恢复音频
 ```
+
+`--virtual` 会自动探测已装的虚拟声卡（`BlackHole 2ch` → `OrayVirtualAudioDevice` → `BlackHole 16ch`），
+也可以 `VIRTUAL_DEVICE=<设备名>` 指定。没有的话装一个最小的：
+
+```bash
+brew install --cask blackhole-2ch        # 101KB，需要管理员密码，装完 coreaudiod 自动加载
+```
+
+切到虚拟声卡后本机就听不到了（所有系统声音都进了这条回环），`--stop` 会切回原来的输出设备；
+想边听边推流，去「音频 MIDI 设置」建一个多输出设备（扬声器 + BlackHole 2ch），再用 `--multi`。
 
 手动方式：
 
@@ -254,6 +265,9 @@ SeedTTS 接入要点（踩过的坑都写在配置注释里）：
 后端只负责把音频文件入队；内嵌播放器（`start-live.sh --player`）用 `afplay` 播到指定音频设备，
 OBS / 直播伴侣以「桌面音频」或虚拟声卡采集进推流，全场观众都能听到。
 
+两种采集方式：**桌面音频**零依赖，但会把本机其它声音一起播出去；**虚拟声卡**（`--virtual`）只抓播放器那路，
+代价是本机听不到。想看画面用浏览器源 `http://127.0.0.1:8080/stage`，比录 mp4 多出立绘动作和字幕气泡。
+
 ## 点歌
 
 ```text
@@ -331,19 +345,24 @@ curl -s localhost:8080/music/state                      # 当前曲 + 队列
    裁掉空白再放大，等于把像素全花在人身上（默认 3 倍，输出 1164×1056）。
 5. **剥掉原画自带的白色外描边**：只删与背景相连的那一圈中灰低饱和像素，
    白蕾丝和蓝色高光都落在判据窗之外，不会误伤。
+6. **补一圈轮廓墨线**（`--outline`，默认 0=不画）：抠成真 alpha 后边缘是半透明过渡，
+   深色舞台上轮廓会「化」掉、人物发虚；旧的黑底+亮度滤镜方案里那圈黑边反而是
+   最清晰的边界。所以沿轮廓向外长一圈墨线（`--outline 4` 在 1164 宽下约 4px），
+   向外而不向内：呆毛弧线、发梢透镜本来就细，向内会被抹掉。
 
 ```bash
 pip install numpy scipy pillow          # 一次性
-python3 scripts/key-black.py --force    # live-assets/pet -> live-assets/pet-alpha（约 8 分钟）
-python3 scripts/key-black.py --only idle,wave --force    # 只重做部分
+python3 scripts/key-black.py --crf 20 --outline 4 --force   # 现网参数，约 15 分钟
+python3 scripts/key-black.py --only idle,wave --force       # 只重做部分
 ```
 
-体积参考：默认 3 倍约 100MB（每动作约 4MB）；`--scale 1` 只剩一个零头。
+体积参考：3 倍 + `--crf 20` 约 180MB（每动作约 7MB）；`--crf 32` 约 100MB 但细线会糊，
+`--scale 1` 只剩一个零头。
 `pet-alpha/` 整个删掉也没事，页面会自动退回带亮度滤镜的源素材 `pet/`。
 
 **换素材的三步**（顺序别反，否则 OBS 会继续播旧文件）：
 
-1. 重烘：`python3 scripts/key-black.py --force`；
+1. 重烘：`python3 scripts/key-black.py --crf 20 --outline 4 --force`；
 2. 改 `live-assets/stage/index.html` 里的 `ASSET_VER`（如 `20261110`），页面会用
    `?v=<版本>` 拉视频，绕开 OBS/CEF 的 webm 缓存；
 3. 在 OBS 里右键浏览器源 →「刷新页面」（或等它重新加载）。

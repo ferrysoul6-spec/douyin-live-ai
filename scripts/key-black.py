@@ -140,7 +140,8 @@ def build_alpha(rgb, dark, band_px, min_blob=400, dewhite_px=6):
     return alpha, bg
 
 
-def bake_frame(rgb, dark, band_px, scale, sharpen, crop=None):
+def bake_frame(rgb, dark, band_px, scale, sharpen, crop=None, outline_px=0.0,
+               outline_rgb=(0.030, 0.045, 0.085)):
     alpha, bg = build_alpha(rgb, dark, band_px)
 
     color = rgb.copy()
@@ -166,6 +167,18 @@ def bake_frame(rgb, dark, band_px, scale, sharpen, crop=None):
         a_up = np.asarray(a_img.resize((ws, hs), Image.LANCZOS), np.float32) / 255.0
         alpha = np.clip(a_up, 0.0, 1.0)
         color = np.clip(pm_up / np.maximum(alpha[..., None], 1e-3), 0.0, 1.0)
+
+    # 描边：沿轮廓向外画一圈墨线。源素材本来带黑描边，抠成真 alpha 后边缘变成
+    # 半透明过渡，深色舞台上轮廓就"化"掉了；旧的黑底+亮度滤镜方案那圈黑边反而是
+    # 人物最清晰的边界，所以在这里显式补回来。向外长而不是向内吃：
+    # 呆毛弧线、发梢透镜这些本来就细，向内会直接把它们抹掉。
+    if outline_px > 0:
+        solid = alpha > 0.35
+        # 用距离变换取等宽外圈：binary_dilation 按菱形长，斜边会比正边薄一半
+        ring = (ndimage.distance_transform_edt(~solid) <= outline_px) & ~solid
+        if ring.any():
+            color[ring] = outline_rgb
+            alpha[ring] = 1.0
 
     if sharpen:
         # 只锐化颜色；锐化 alpha 会让边缘出硬锯齿。
@@ -210,6 +223,8 @@ def main():
                     help="裁到人物：x0,y0,x1,y1；留空=保持原构图（默认值是这 25 个动作的包围盒并集）")
     ap.add_argument("--no-sharpen", action="store_true")
     ap.add_argument("--crf", type=int, default=32)
+    ap.add_argument("--outline", type=float, default=0,
+                    help="轮廓墨线宽度（输出像素，0=不画）；深色舞台上没这圈边人物会发虚")
     args = ap.parse_args()
 
     only = {a.strip() for a in args.only.split(",") if a.strip()}
@@ -234,7 +249,7 @@ def main():
                 sys.exit("--crop 需要 4 个整数：x0,y0,x1,y1")
             crop = (max(0, crop[0]), max(0, crop[1]), min(w, crop[2]), min(h, crop[3]))
         frames = (bake_frame(f, args.dark, args.band, args.scale,
-                             not args.no_sharpen, crop)
+                             not args.no_sharpen, crop, args.outline)
                   for f in decode(src, w, h))
         ow = ((crop[2] - crop[0]) if crop else w) * args.scale
         oh = ((crop[3] - crop[1]) if crop else h) * args.scale

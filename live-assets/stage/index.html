@@ -10,19 +10,25 @@
     font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
     color: #eaf4ff;
   }
-  #pet {
+  /* 双缓冲：两个 video 叠在同一位置。切动作时先把新动作加载进隐藏的那个，
+     出帧后再交叉淡入——单元素直接改 src 会先清空画面，idle 每 3s 换一次
+     小动作，看上去就是人物持续闪黑。 */
+  #pet, #pet2 {
     position: absolute; left: 50%; bottom: 0;
     transform: translateX(-50%);
     height: 94%; max-width: 92vw; object-fit: contain;
     pointer-events: none;
+    opacity: 0; transition: opacity .16s linear;
   }
+  #pet.on, #pet2.on { opacity: 1; }
   /* 只有退回「黑底无 alpha」的旧素材时才需要亮度抠像；
      /pet-alpha 是真 alpha 视频，加滤镜反而会破坏它 */
-  #pet.filtered { filter: url(#deblack); }
+  #pet.filtered, #pet2.filtered { filter: url(#deblack); }
+  /* 字幕放头顶：角色占满画面高度，底部气泡会压住身体 */
   #bubble {
-    position: absolute; left: 50%; bottom: 7%;
+    position: absolute; left: 50%; top: 2%;
     transform: translateX(-50%);
-    max-width: min(72vw, 860px);
+    max-width: min(64vw, 820px);
     padding: 18px 26px;
     border-radius: 22px;
     background: rgba(10, 28, 54, .74);
@@ -36,8 +42,9 @@
   }
   #bubble.show { opacity: 1; }
   #bubbleFrom { color: #8fd0ff; font-weight: 600; margin-right: 8px; }
+  /* 气泡挪到头顶后这里会撞上，队列改挂右侧中部 */
   #queue {
-    position: absolute; right: 3%; top: 5%;
+    position: absolute; right: 3%; top: 26%;
     min-width: 240px; max-width: 30vw;
     padding: 14px 18px 12px;
     border-radius: 16px;
@@ -85,6 +92,7 @@
 <!-- preload=auto：烘焙后的动作每个约 3MB（裁到人物 + 3 倍放大），
      提前缓冲能减少切动作时的等待 -->
 <video id="pet" muted autoplay playsinline preload="auto"></video>
+<video id="pet2" muted autoplay playsinline preload="auto"></video>
 
 <div id="bubble"><span id="bubbleFrom"></span><span id="bubbleText"></span></div>
 
@@ -95,7 +103,7 @@
 
 <script>
 (() => {
-  const pet = document.getElementById('pet');
+  const vids = [document.getElementById('pet'), document.getElementById('pet2')];
   const bubble = document.getElementById('bubble');
   const bubbleFrom = document.getElementById('bubbleFrom');
   const bubbleText = document.getElementById('bubbleText');
@@ -111,24 +119,25 @@
   //   /pet        原始黑底素材，靠 CSS 亮度滤镜抠像（alpha 不被支持时退回这套）
   let base = '/pet-alpha';
   // 换素材后改这个版本号：OBS 的浏览器源会缓存 webm，不带 ?v= 会继续播旧文件
-  const ASSET_VER = '20261110b';
-  let current = 'idle';
+  const ASSET_VER = '20261111c';
+  let current = '';            // 当前动作名，空串强制重新加载
+  let active = 0;              // 正在显示的 video 下标
   let wantFilter = false;      // 只有退回黑底素材时才挂亮度滤镜
   let alphaChecked = false;
 
   function applyLook() {
-    pet.classList.toggle('filtered', wantFilter);
+    vids.forEach((v) => v.classList.toggle('filtered', wantFilter));
   }
 
   /** 画一帧到 canvas 看左上角有没有透明像素：有=浏览器支持视频 alpha。 */
-  function videoHasAlpha() {
+  function videoHasAlpha(v) {
     try {
       const c = document.createElement('canvas');
       c.width = 8;
       c.height = 8;
       const ctx = c.getContext('2d', { willReadFrequently: true });
       ctx.clearRect(0, 0, 8, 8);
-      ctx.drawImage(pet, 0, 0, 8, 8);
+      ctx.drawImage(v, 0, 0, 8, 8);
       const d = ctx.getImageData(0, 0, 8, 8).data;
       for (let i = 3; i < d.length; i += 4) {
         if (d[i] < 250) return true;
@@ -139,55 +148,87 @@
     }
   }
 
-  function tryPlay() {
-    pet.muted = true;
-    const p = pet.play();
+  function tryPlay(v) {
+    v.muted = true;
+    const p = v.play();
     if (p && p.catch) {
       p.catch(() => {
         // 浏览器可能拦自动播放：等 loadeddata 再试一次，再不行就等一次点击
-        setTimeout(() => pet.play().catch(() => {}), 400);
+        setTimeout(() => v.play().catch(() => {}), 400);
       });
     }
   }
 
-  function setAction(action) {
-    current = action || 'idle';
-    pet.src = base + '/' + current + '.webm?v=' + ASSET_VER;
-    pet.loop = current === 'idle';
-    applyLook();
-    tryPlay();
-  }
-
-  pet.addEventListener('loadeddata', () => {
-    // 首帧到了才检查：有些环境（OBS 的 CEF 较老）不支持 VP9 alpha，
-    // 那样人物会变成一块黑方块，比滤镜方案更糟，所以必须实测再决定
-    if (!alphaChecked && base === '/pet-alpha') {
-      alphaChecked = true;
-      if (!videoHasAlpha()) {
-        console.warn('[stage] 该环境不支持视频 alpha，退回黑底素材 + 亮度滤镜');
-        base = '/pet';
-        wantFilter = true;
-        setAction(current);
-        return;
-      }
-    }
-    tryPlay();
-  });
-  window.addEventListener('click', tryPlay, { once: true });
-
-  pet.addEventListener('error', () => {
+  function fallbackToSource() {
     if (base === '/pet-alpha') {
-      // 烘焙素材缺失（没跑过 scripts/key-black.py）：退回带滤镜的源素材
       base = '/pet';
       wantFilter = true;
-      setAction(current);
-      return;
+      const again = current;
+      current = '';
+      setAction(again);
+      return true;
     }
-    // 源素材也坏了：退回 idle，别让画面空白
-    if (current !== 'idle') {
-      setAction('idle');
+    return false;
+  }
+
+  function setAction(action) {
+    const name = action || 'idle';
+    if (name === current) return;
+    current = name;
+
+    // 新动作永远加载进「没在显示」的那个，出帧后才换上去
+    const next = vids[1 - active];
+    next.loop = name === 'idle';
+    // error 监听要跟着 src 走：元素是复用的，不摘掉旧监听会让一次加载失败
+    // 一直挂在那里，后面正常加载时报错也会被误判成「素材坏了」
+    if (next._onErr) next.removeEventListener('error', next._onErr);
+    next._onErr = () => {
+      // 烘焙素材缺失（没跑过 scripts/key-black.py）：退回带滤镜的源素材
+      if (fallbackToSource()) return;
+      // 源素材也坏了：退回 idle，别让画面空白
+      if (current !== 'idle') setAction('idle');
+    };
+    next.addEventListener('error', next._onErr);
+    if (next._onLoaded) next.removeEventListener('loadeddata', next._onLoaded);
+    next.src = base + '/' + name + '.webm?v=' + ASSET_VER;
+
+    const reveal = () => {
+      if (next._onLoaded) {
+        next.removeEventListener('loadeddata', next._onLoaded);
+        next._onLoaded = null;
+      }
+      const prev = vids[active];
+      active = 1 - active;
+      const v = vids[active];
+      v.classList.add('on');
+      prev.classList.remove('on');
+      applyLook();
+      tryPlay(v);
+
+      // 首帧到了才检查：有些环境（OBS 的 CEF 较老）不支持 VP9 alpha，
+      // 那样人物会变成一块黑方块，比滤镜方案更糟，所以必须实测再决定
+      if (!alphaChecked && base === '/pet-alpha') {
+        alphaChecked = true;
+        if (!videoHasAlpha(v)) {
+          console.warn('[stage] 该环境不支持视频 alpha，退回黑底素材 + 亮度滤镜');
+          fallbackToSource();
+          return;
+        }
+      }
+      // 交叉淡入结束后停掉旧元素，别让它继续吃解码
+      setTimeout(() => {
+        if (!prev.classList.contains('on')) prev.pause();
+      }, 260);
+    };
+
+    if (next.readyState >= 2) reveal();
+    else {
+      next._onLoaded = reveal;
+      next.addEventListener('loadeddata', reveal);
     }
-  });
+  }
+
+  window.addEventListener('click', () => tryPlay(vids[active]), { once: true });
 
   function showBubble(from, text) {
     bubbleFrom.textContent = from ? from + '：' : '';
@@ -235,9 +276,9 @@
       if (res.ok) {
         const state = await res.json();
         if (state.enabled === false) {
-          pet.style.display = 'none';
+          vids.forEach((v) => { v.style.display = 'none'; });
         } else {
-          pet.style.display = '';
+          vids.forEach((v) => { v.style.display = ''; });
           if (state.seq !== lastSeq) {
             lastSeq = state.seq;
             setAction(state.action);
@@ -254,6 +295,26 @@
     }
     setTimeout(tick, 800);
   }
+
+  // 非 idle 动作是一次性视频，播完就停在最后一帧。后端的回切任务万一丢了
+  // （或被新事件顶掉），画面就一直定在那儿——本地兜一层，播完自己回 idle。
+  vids.forEach((v) => {
+    v.addEventListener('ended', () => {
+      if (v.classList.contains('on') && current !== 'idle') setAction('idle');
+    });
+  });
+
+  // 看门狗：OBS 的 CEF 偶尔会把 video 暂停掉，而 seq 不变时前端没有任何事件
+  // 可依赖，只能定时自检——正在显示的那路没在播就重新拉起来。
+  setInterval(() => {
+    const v = vids[active];
+    if (!v || !v.src) return;
+    if (v.ended) {
+      if (current !== 'idle') setAction('idle');
+      return;
+    }
+    if (v.paused) tryPlay(v);
+  }, 1500);
 
   tick();
 })();

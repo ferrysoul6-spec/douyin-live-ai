@@ -38,6 +38,9 @@ public class StageService {
     /** 空闲轮换的小动作播放多久（毫秒），到点回 idle。 */
     private static final int IDLE_ACTION_HOLD_MS = 3_000;
 
+    /** 非 idle 动作卡多久算异常（毫秒）：一次性的视频播完画面就定住，得拉回来。 */
+    private static final long STUCK_ACTION_MS = 20_000L;
+
     private final AppProperties props;
     private final MusicService music;
     private final ScheduledExecutorService scheduler =
@@ -55,6 +58,8 @@ public class StageService {
     private volatile String from = "";
     private volatile long lastActivityAt = System.currentTimeMillis();
     private volatile long lastRotateAt = System.currentTimeMillis();
+    /** 最近一次动作切换时间，判断「卡在一次性动作上」用。 */
+    private volatile long lastActionAt = System.currentTimeMillis();
 
     public StageService(AppProperties props, MusicService music) {
         this.props = props;
@@ -81,6 +86,7 @@ public class StageService {
         this.action = action;
         long mySeq = seq.incrementAndGet();
         lastActivityAt = System.currentTimeMillis();
+        lastActionAt = System.currentTimeMillis();
         if (holdMs > 0) {
             scheduler.schedule(() -> {
                 // 期间没有新动作才回 idle，避免把后一个动作打断
@@ -101,10 +107,18 @@ public class StageService {
         this.text = text;
         textSeq.incrementAndGet();
         lastActivityAt = System.currentTimeMillis();
-        // 说完话就别一直「思考」了，回到待机小动作
+        // 说完话就别一直「思考」了，回到待机小动作。
+        // 必须排一个回切：轮换只认 action=="idle"，停在 bubble 上画面就定格了。
         if ("think".equals(action)) {
-            action = "bubble";
-            seq.incrementAndGet();
+            this.action = "bubble";
+            lastActionAt = System.currentTimeMillis();
+            long mySeq = seq.incrementAndGet();
+            scheduler.schedule(() -> {
+                if (seq.get() == mySeq && "bubble".equals(this.action)) {
+                    this.action = "idle";
+                    seq.incrementAndGet();
+                }
+            }, 2_600L, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -120,6 +134,14 @@ public class StageService {
             return;
         }
         if (!"idle".equals(action)) {
+            // 兜底：轮换只认 idle，一旦动作卡在别的名字上（一次性视频播完后
+            // 停在最后一帧），这里就永远进不来。正常路径都会排回切任务，
+            // 卡超过一个轮换周期说明回切丢了，直接拉回 idle。
+            if (now - lastActionAt > STUCK_ACTION_MS) {
+                log.warn("动作卡在 {} 超过 {}s，强制回 idle", action, STUCK_ACTION_MS / 1000);
+                action = "idle";
+                seq.incrementAndGet();
+            }
             return;
         }
         String next = idleActions.get(ThreadLocalRandom.current().nextInt(idleActions.size()));
@@ -127,6 +149,7 @@ public class StageService {
         if ("idle".equals(next)) {
             // 抽到 idle 本身：只是重放循环，不需要回切
             action = next;
+            lastActionAt = System.currentTimeMillis();
             seq.incrementAndGet();
             return;
         }
@@ -138,6 +161,7 @@ public class StageService {
     /** 播一个一次性动作，到点自动回 idle。期间有新动作抢占则放弃。 */
     private void holdThenIdle(String next, int holdMs) {
         this.action = next;
+        lastActionAt = System.currentTimeMillis();
         long mySeq = seq.incrementAndGet();
         scheduler.schedule(() -> {
             if (seq.get() == mySeq && next.equals(this.action)) {
