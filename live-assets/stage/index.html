@@ -67,6 +67,27 @@
   }
   #queueList li.cur { color: #ffe3a3; opacity: 1; }
   #queueList li .by { color: #7fa6cf; font-size: .82em; margin-left: 6px; }
+  /* 左侧互动指令清单：常驻显示（不像点歌队列那样淡入淡出），
+     让刚进来看一眼就知道能发什么口令。与右侧队列同一水平线。 */
+  #help {
+    position: absolute; left: 3%; top: 26%;
+    min-width: 200px; max-width: 26vw;
+    padding: 14px 18px 12px;
+    border-radius: 16px;
+    background: rgba(10, 28, 54, .58);
+    border: 1px solid rgba(126, 196, 255, .28);
+    backdrop-filter: blur(6px);
+    font-size: clamp(14px, 1.3vw, 22px);
+    pointer-events: none;
+  }
+  #help h3 {
+    margin: 0 0 8px; font-size: .82em; font-weight: 600;
+    letter-spacing: .08em; color: #8fd0ff;
+  }
+  #help ul { margin: 0; padding: 0; list-style: none; }
+  #help li { padding: 3px 0; opacity: .92; white-space: nowrap; }
+  /* 口令本身用暖色，和后面对应的动作名拉开层级 */
+  #help li b { color: #ffe3a3; font-weight: 600; margin-right: 8px; }
 </style>
 </head>
 <body>
@@ -80,6 +101,15 @@
 <canvas id="pet2" width="360" height="340"></canvas>
 
 <div id="bubble"><span id="bubbleFrom"></span><span id="bubbleText"></span></div>
+
+<!-- 互动指令清单：观众发「1」触发舞狮头（后端 ReplyService.isShowCommand）。
+     新增口令时这里和后端一起改，不然页面会教观众发不生效的指令。 -->
+<div id="help">
+  <h3>互动</h3>
+  <ul>
+    <li><b>1</b>舞狮头</li>
+  </ul>
+</div>
 
 <div id="queue">
   <h3>点歌队列</h3>
