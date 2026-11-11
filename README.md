@@ -331,7 +331,7 @@ curl -s localhost:8080/music/state                      # 当前曲 + 队列
 | 素材 | `live-assets/shenshen/`（深深 2.0，7 个分卷共 106 个动作 × 241 帧，原始 webp 自带 alpha） |
 | 播放 | canvas 按 24fps 逐帧抽图，**不烘 webm**，原图一个字节都不改 |
 | 动作映射 | 进场 `wave`、礼物 `happy`、关注 `shy`、LLM 生成中 `think`、说完 `bubble`、点歌 `sing`、其余为待机轮换 |
-| 空闲 | 超过 18s 无事件后在 `idle,doze,tail,tea,bubble` 之间轮换，小动作播 3s 自动回 `idle` |
+| 空闲 | 超过 18s 无事件后，从素材清单里**全部 105 个动作**中随机轮换（排除 `idle` 本身），每个按真实时长（241 帧 ≈ 10s）播完再回 `idle`，两次间隔 22s |
 | 前端 | 每 0.8s 轮询 `GET /stage/state`，只在 `seq` 变化时换动作 |
 
 **素材直接读原图，不烘焙**
@@ -429,7 +429,18 @@ python3 scripts/key-black.py --only idle,wave --force       # 只重做部分
 OBS 里加一个**浏览器源**，URL 填 `http://127.0.0.1:8080/stage`，宽高与画布一致，
 勾选「透明背景」（页面本身没有背景色）。
 
-配置：`live-ai.stage.*`（enabled / idle-actions / idle-after-seconds）
+配置：`live-ai.stage.*`
+
+| 项 | 作用 |
+|---|---|
+| `enabled` | 舞台总开关 |
+| `idle-actions` | 待机轮换的动作。写 `auto`（默认）从 `idle-actions-file` 读全部动作；也可以写逗号分隔的动作名手工指定 |
+| `idle-actions-file` | 素材清单，默认 `live-assets/stage/manifest-shenshen.json`（与前端共用） |
+| `idle-after-seconds` | 无事件多少秒后开始轮换（默认 18） |
+| `idle-rotate-seconds` | 两次轮换的最小间隔（默认 22，动作播完还要留一段待机） |
+
+动作时长按清单里的帧数算（241 帧 @24fps ≈ 10s）并多给 300ms，不是固定 3s——
+否则长动作只会播个开头就被切走。清单读不到时退化为只播 `idle` 循环，画面不会空。
 
 > 素材使用时请确认授权。早先那套动作素材取自
 > [newbeejmc/Dsh_douyin](https://github.com/newbeejmc/Dsh_douyin)。

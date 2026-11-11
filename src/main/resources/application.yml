@@ -124,9 +124,13 @@ live-ai:
   stage:
     # OBS 浏览器源指向 http://127.0.0.1:8080/stage
     enabled: ${STAGE_ENABLED:true}
-    # 空闲轮换的动作（素材在 live-assets/pet-alpha/*.webm）
-    idle-actions: idle,doze,tail,tea,bubble
+    # 待机轮换的动作：auto = 从下面那份素材清单自动装填全部动作
+    #（素材加了多少个，轮换池就有多少个）；也可以写逗号分隔的动作名手工指定
+    idle-actions: ${STAGE_IDLE_ACTIONS:auto}
+    idle-actions-file: ${STAGE_IDLE_ACTIONS_FILE:live-assets/stage/manifest-shenshen.json}
     idle-after-seconds: 18
+    # 两次轮换的间隔（秒）：动作按清单里的真实时长播完，留一段待机再换下一个
+    idle-rotate-seconds: ${STAGE_IDLE_ROTATE_SECONDS:22}
   warmup:
     # 冷场暖场：静默一段时间主动播一条预置话术（不走 LLM，复用 TTS 队列）
     enabled: ${WARMUP_ENABLED:true}

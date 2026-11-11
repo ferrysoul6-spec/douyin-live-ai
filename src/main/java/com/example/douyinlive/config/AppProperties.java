@@ -381,17 +381,30 @@ public class AppProperties {
      */
     public static class Stage {
         private boolean enabled = true;
-        /** 空闲时轮换的动作，逗号分隔（素材在 live-assets/pet-alpha/*.webm）。 */
-        private String idleActions = "idle,doze,tail,tea,bubble";
+        /**
+         * 空闲时轮换的动作，逗号分隔。
+         *
+         * <p>写 {@code auto} 表示从素材清单里自动装填全部动作（推荐）：素材加了多少个，
+         * 轮换池就有多少个，不用手工维护这一行。
+         */
+        private String idleActions = "auto";
+        /** 素材清单，前端与本服务共用；auto 模式下从它读动作名和帧数。 */
+        private String idleActionsFile = "live-assets/stage/manifest-shenshen.json";
         /** 空闲多少秒后开始轮换动作。 */
         private int idleAfterSeconds = 18;
+        /** 两次轮换之间的间隔秒数（上一次开播算起），动作播完留一段待机再换下一个。 */
+        private int idleRotateSeconds = 22;
 
         public boolean isEnabled() { return enabled; }
         public void setEnabled(boolean b) { this.enabled = b; }
         public String getIdleActions() { return idleActions; }
         public void setIdleActions(String s) { this.idleActions = s; }
+        public String getIdleActionsFile() { return idleActionsFile; }
+        public void setIdleActionsFile(String s) { this.idleActionsFile = s; }
         public int getIdleAfterSeconds() { return idleAfterSeconds; }
         public void setIdleAfterSeconds(int n) { this.idleAfterSeconds = n; }
+        public int getIdleRotateSeconds() { return idleRotateSeconds; }
+        public void setIdleRotateSeconds(int n) { this.idleRotateSeconds = n; }
     }
 
     /**
