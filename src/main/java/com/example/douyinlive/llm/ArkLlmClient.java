@@ -63,8 +63,10 @@ public class ArkLlmClient implements LlmClient {
                 Map.of("role", "system", "content", systemPrompt),
                 Map.of("role", "user", "content", userPrompt)
         ));
-        // 火山方舟 doubao 系默认开深度思考，直播场景延迟不可接受，按配置显式关闭
-        if (cfg.isDisableThinking()) {
+        // 火山方舟 doubao 系默认开深度思考，直播场景延迟不可接受，按配置显式关闭。
+        // 只对 doubao / seed 系发这个字段：兜底链上还挂着 glm、kimi、deepseek，
+        // 它们不认 thinking 很可能直接 400，那就白瞎了这些兜底位。
+        if (cfg.isDisableThinking() && supportsThinkingSwitch(model)) {
             body.put("thinking", Map.of("type", "disabled"));
         }
 
@@ -87,7 +89,7 @@ public class ArkLlmClient implements LlmClient {
             HttpResponse<String> resp = http.send(request, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() != 200) {
                 log.warn("方舟返回非 200: model={}, status={}, body={}", model, resp.statusCode(), abbreviate(resp.body()));
-                throw new LlmException("方舟 HTTP " + resp.statusCode());
+                throw new LlmException("方舟 HTTP " + resp.statusCode(), resp.statusCode());
             }
 
             JsonNode root = mapper.readTree(resp.body());
@@ -104,6 +106,15 @@ public class ArkLlmClient implements LlmClient {
         } catch (Exception e) {
             throw new LlmException("方舟调用失败: " + e.getMessage(), e);
         }
+    }
+
+    /** 只有 doubao / seed 系认 thinking 字段；glm、kimi、deepseek 发了可能直接 400。 */
+    private boolean supportsThinkingSwitch(String model) {
+        if (model == null) {
+            return false;
+        }
+        String m = model.toLowerCase();
+        return m.contains("doubao") || m.contains("seed");
     }
 
     private String abbreviate(String s) {

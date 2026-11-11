@@ -7,8 +7,12 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +20,7 @@ import org.junit.jupiter.api.Test;
 import com.example.douyinlive.config.AppProperties;
 
 /**
- * 模型级兜底：主模型失败换备用模型重试一次，两个都失败才抛给业务层。
+ * 模型级兜底：主模型失败按兜底链顺序逐个重试，全链失败才抛给业务层。
  */
 class FallbackLlmClientTest {
 
@@ -100,5 +104,35 @@ class FallbackLlmClientTest {
 
         assertThatThrownBy(() -> fallback.chat("system", "user"))
                 .isInstanceOf(LlmException.class);
+    }
+
+    @Test
+    void 兜底链逐个尝试直到成功() {
+        props.getLlm().setFallbackModel("");
+        props.getLlm().setFallbackModels(new ArrayList<>(List.of("model-b", "model-c")));
+        when(client.chatWithModel(eq(props.getLlm().getModel()), anyInt(), anyString(), anyString()))
+                .thenThrow(new LlmException("主模型 500", 500));
+        when(client.chatWithModel(eq("model-b"), anyInt(), anyString(), anyString()))
+                .thenThrow(new LlmException("model-b 429", 429));
+        when(client.chatWithModel(eq("model-c"), anyInt(), anyString(), anyString()))
+                .thenReturn("第三个模型回复");
+
+        assertThat(fallback.chat("system", "user")).isEqualTo("第三个模型回复");
+        verify(client).chatWithModel(eq("model-b"), anyInt(), anyString(), anyString());
+        verify(client).chatWithModel(eq("model-c"), anyInt(), anyString(), anyString());
+    }
+
+    @Test
+    void 账号级403立刻放弃整条链() {
+        props.getLlm().setFallbackModel("");
+        props.getLlm().setFallbackModels(new ArrayList<>(List.of("model-b", "model-c")));
+        when(client.chatWithModel(anyString(), anyInt(), anyString(), anyString()))
+                .thenThrow(new LlmException("方舟 HTTP 403", 403));
+
+        assertThatThrownBy(() -> fallback.chat("system", "user"))
+                .isInstanceOf(LlmException.class)
+                .satisfies(e -> assertThat(((LlmException) e).isFatal()).isTrue());
+        // 欠费换模型没用，只该撞一次，不该把整条链走完
+        verify(client, times(1)).chatWithModel(anyString(), anyInt(), anyString(), anyString());
     }
 }

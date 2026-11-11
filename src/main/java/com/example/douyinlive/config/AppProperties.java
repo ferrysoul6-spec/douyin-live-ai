@@ -86,6 +86,15 @@ public class AppProperties {
         private boolean fallbackEnabled = true;
         /** 兜底模型的超时秒数，比主模型短，避免单条弹幕连等两次完整超时。 */
         private int fallbackTimeoutSeconds = 5;
+        /**
+         * 兜底链：主模型失败后按顺序逐个尝试，任一成功即返回。
+         *
+         * <p>与主模型共用同一 Key 与 base-url，只换 model 字段，因此只能兜「模型级」故障；
+         * Key 失效 / 账号欠费（401、403）属于账号级故障，链上会立刻放弃，不用把十几个模型挨个撞一遍。
+         */
+        private java.util.List<String> fallbackModels = new java.util.ArrayList<>();
+        /** 整条兜底链的总预算（秒）：超预算就停手，别让一条弹幕排队等十几秒。 */
+        private int fallbackBudgetSeconds = 15;
 
         public String getApiKey() { return apiKey; }
         public void setApiKey(String apiKey) { this.apiKey = apiKey; }
@@ -107,6 +116,10 @@ public class AppProperties {
         public void setFallbackEnabled(boolean b) { this.fallbackEnabled = b; }
         public int getFallbackTimeoutSeconds() { return fallbackTimeoutSeconds; }
         public void setFallbackTimeoutSeconds(int s) { this.fallbackTimeoutSeconds = s; }
+        public java.util.List<String> getFallbackModels() { return fallbackModels; }
+        public void setFallbackModels(java.util.List<String> list) { this.fallbackModels = list; }
+        public int getFallbackBudgetSeconds() { return fallbackBudgetSeconds; }
+        public void setFallbackBudgetSeconds(int s) { this.fallbackBudgetSeconds = s; }
     }
 
     public static class Persona {

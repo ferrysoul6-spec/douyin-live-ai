@@ -169,40 +169,50 @@ mvn spring-boot:run
 欢迎与回复分开配额是刻意的：共用 30 次/分时，开场 30 秒来几十个观众就会把额度吃光，
 之后所有提问只能得到话术池回复。
 
-## 回复链路的三级降级
+## 回复链路的多级降级
 
 ```text
-主模型（llm.model）失败 ──→ 备用模型（llm.fallback-model）重试一次 ──→ 预设话术池
+主模型（llm.model）失败 ──→ 兜底链（llm.fallback-models）逐个试 ──→ 预设话术池
 ```
 
 `FallbackLlmClient` 负责前两级，`ReplyService` 负责最后一级。触发条件：HTTP 非 200、
-超时、返回空内容。备用模型与主模型共用同一个 Key 和 base-url，**只换 model 字段**，
+超时、返回空内容。链上所有模型共用同一个 Key 和 base-url，**只换 model 字段**，
 所以只能兜「模型级」故障（限流 / 该模型不可用 / 单次超时）：
 
-| 故障 | 备用模型能否兜住 |
+| 故障 | 兜底链能否兜住 |
 |---|---|
-| 主模型限流、临时不可用、单次超时 | 能 |
-| Key 失效、账号欠费、方舟整体故障 | 不能，落到话术池 |
+| 主模型限流、临时不可用、单次超时 | 能，换下一个模型 |
+| Key 失效（401）、账号欠费或无权限（403） | 不能，且**立刻放弃整条链**，落到话术池 |
+
+最后一条是特意加的刹车：欠费时换十几个模型也一样是 403，不刹车就会把链上每个模型
+都撞一遍、刷满日志。`LlmException.isFatal()` 认 401/403，命中即抛。
+
+另外整条链有总预算 `fallback-budget-seconds`（默认 15s），超了就停手——一条弹幕
+不能因为链长而排队等十几秒。主模型用 `timeout-seconds`，兜底位用更短的
+`fallback-timeout-seconds`。
 
 配置：
 
 ```yaml
 live-ai.llm:
-  model: doubao-seed-2-1-lite-260915              # 主模型
-  fallback-model: doubao-seed-2-1-turbo-260628    # 备用模型，留空 = 关闭兜底
+  model: doubao-seed-2-1-lite-260915        # 主模型
+  fallback-models:                          # 兜底链，按顺序逐个试；留空 = 关闭
+    - doubao-seed-2-1-turbo-260628
+    - glm-5-3-flash-260828
+    - deepseek-v4-1-flash-261017
   fallback-enabled: true
-  fallback-timeout-seconds: 5                     # 比主模型短，避免连等两次完整超时
+  fallback-timeout-seconds: 5               # 每个兜底位的超时
+  fallback-budget-seconds: 15               # 整条链的总预算
 ```
 
-环境变量覆盖：`ARK_MODEL` / `ARK_FALLBACK_MODEL` / `ARK_FALLBACK_ENABLED` / `ARK_FALLBACK_TIMEOUT_SECONDS`。
+环境变量覆盖：`ARK_MODEL` / `ARK_FALLBACK_MODELS`（逗号分隔）/ `ARK_FALLBACK_ENABLED` /
+`ARK_FALLBACK_TIMEOUT_SECONDS` / `ARK_FALLBACK_BUDGET_SECONDS`。旧的单个
+`fallback-model` 仍然生效，会被并进链里（排在最前面之后、不重复）。
 
-实测（把主模型名改成不存在的值）：
+`thinking: {"type":"disabled"}` 只发给 `doubao` / `seed` 系——glm、kimi、deepseek
+不认这个字段，发了可能直接 400，把它们放在链上就白费了。
 
-```text
-INFO  LLM 路由：主 = doubao-seed-2-1-nonexist-999999，兜底 = doubao-seed-2-1-turbo-260628（fallback-enabled=true）
-WARN  主模型 doubao-seed-2-1-nonexist-999999 失败，回落到 doubao-seed-2-1-turbo-260628: 方舟 HTTP 404
-INFO  [模拟] COMMENT 路过的宝子 -> [LLM]: 直播间有专属券，先领券再下单，叠加下来更划算。
-```
+实测日志：
 
 ## 语音引擎：SeedTTS 主用 + edge-tts 免费兜底
 

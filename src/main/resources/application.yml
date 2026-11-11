@@ -25,12 +25,18 @@ live-ai:
     timeout-seconds: 10
     # 方舟 doubao-seed 系默认开深度思考（reasoning 几百 token、延迟 10s+），直播必须关
     disable-thinking: ${ARK_DISABLE_THINKING:true}
-    # 主模型失败（限流 / 超时 / 模型不可用 / 返回空）时回落的备用模型，只换 model 字段，
-    # Key 与 base-url 不变。只能兜「模型级」故障；Key 失效/欠费/方舟整体故障仍走话术池。
-    fallback-model: ${ARK_FALLBACK_MODEL:doubao-seed-2-1-turbo-260628}
+    # 主模型失败（限流 / 超时 / 模型不可用 / 返回空）时的兜底链：按顺序逐个试，任一成功即用。
+    # 只换 model 字段，Key 与 base-url 不变，所以只能兜「模型级」故障；
+    # 401 Key 无效 / 403 欠费属于账号级故障，链上会立刻放弃（见 LlmException.isFatal）。
+    # 顺序按「直播短回复 + 限流宽松 + 不用下线」排；ARK_FALLBACK_MODELS=a,b,c 可整体覆盖。
+    fallback-models: ${ARK_FALLBACK_MODELS:doubao-seed-2-1-turbo-260628,doubao-seed-2-1-pro-260915,doubao-seed-2-0-lite-260428,doubao-seed-2-0-mini-260428,doubao-seed-2-1-pro-260628,doubao-seed-character-260628,doubao-seed-character-251128,glm-5-3-flash-260828,glm-5-2-260617,kimi-k3-1-pro-261024,deepseek-v4-1-flash-economy-261017,deepseek-v4-1-flash-261017,deepseek-v4-1-flash-260910,deepseek-v4-flash-ga-260731,deepseek-v4-pro-ga-260813,doubao-seed-evolving}
+    # 旧的单备用写法，仍然生效（会并进上面的链；不配就留空）
+    fallback-model: ${ARK_FALLBACK_MODEL:}
     fallback-enabled: ${ARK_FALLBACK_ENABLED:true}
     # 兜底超时比主模型短，避免单条弹幕连等两次完整超时
     fallback-timeout-seconds: ${ARK_FALLBACK_TIMEOUT_SECONDS:5}
+    # 整条链的总预算：超了就停手，不让一条弹幕排队等十几秒
+    fallback-budget-seconds: ${ARK_FALLBACK_BUDGET_SECONDS:15}
   persona:
     name: 大肥鱼
     style: 温柔、话痨、简短
