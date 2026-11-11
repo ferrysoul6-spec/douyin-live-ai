@@ -222,6 +222,15 @@ public class AppProperties {
         private int globalLlmPerMinute = 40;
         /** 命中 FAQ 时是否跳过 LLM（省 token）。 */
         private boolean faqShortcut = true;
+        /**
+         * 点赞感谢的冷却秒数。
+         *
+         * <p>点赞是高频事件，观众连点几十上百下平台会连续回调；每条都谢就是刷屏，
+         * 所以攒够数量、且距上次致谢超过这个秒数才播一次。
+         */
+        private int likeThankCooldownSeconds = 45;
+        /** 累计多少个赞才值得感谢一次。 */
+        private int likeThankMinCount = 5;
 
         public int getWelcomeDedupeSeconds() { return welcomeDedupeSeconds; }
         public void setWelcomeDedupeSeconds(int s) { this.welcomeDedupeSeconds = s; }
@@ -237,6 +246,10 @@ public class AppProperties {
         public void setGlobalLlmPerMinute(int n) { this.globalLlmPerMinute = n; }
         public boolean isFaqShortcut() { return faqShortcut; }
         public void setFaqShortcut(boolean b) { this.faqShortcut = b; }
+        public int getLikeThankCooldownSeconds() { return likeThankCooldownSeconds; }
+        public void setLikeThankCooldownSeconds(int s) { this.likeThankCooldownSeconds = s; }
+        public int getLikeThankMinCount() { return likeThankMinCount; }
+        public void setLikeThankMinCount(int n) { this.likeThankMinCount = n; }
     }
 
     /**

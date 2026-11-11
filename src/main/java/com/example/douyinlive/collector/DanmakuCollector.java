@@ -1,5 +1,7 @@
 package com.example.douyinlive.collector;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
@@ -8,7 +10,10 @@ import org.springframework.stereotype.Component;
 
 import com.douyinlive.DouyinLiveClient;
 import com.douyinlive.event.ChatEvent;
+import com.douyinlive.event.GiftComboEvent;
+import com.douyinlive.event.GiftComboState;
 import com.douyinlive.event.GiftEvent;
+import com.douyinlive.event.LikeEvent;
 import com.douyinlive.event.MemberEvent;
 import com.douyinlive.event.SocialEvent;
 import com.douyinlive.event.UserEvent;
@@ -45,6 +50,11 @@ public class DanmakuCollector {
     private final AtomicBoolean running = new AtomicBoolean(false);
     /** 重连中标志：SDK 可能连续回调多次 onDisconnect，避免并发跑多个重连线程。 */
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
+    /**
+     * 连击去重：SDK 会同时给 onGift 和 onGiftCombo，同一个 groupId 只该感谢一次。
+     * value 是上次投递时间，超过窗口就清掉，避免长时间运行无限涨。
+     */
+    private final Map<String, Long> thankedGiftGroups = new ConcurrentHashMap<>();
     private volatile DouyinLiveClient client;
 
     public DanmakuCollector(AppProperties props, ReplyService replyService, EventWorker eventWorker) {
@@ -186,7 +196,39 @@ public class DanmakuCollector {
         }
     }
 
-    /** SDK 监听器：只覆写我们关心的五类事件。 */
+    /**
+     * 这一帧礼物要不要跳过。
+     *
+     * <p>{@code repeatEnd} 只有「连击最后一帧」才置 1，而单次送礼（尤其大礼物）在协议里
+     * 常常不带这个字段。原来只认 {@code isComboEnd()}，等于把单次礼物全当「连击未结束」
+     * 丢掉——线上一条礼物感谢都没出。
+     *
+     * <p>现在的判据：结束帧一定放行；数量≤1 说明不是连击，也放行；
+     * 只有「还在连击中、且已经累计多个」才等结束帧。
+     */
+    static boolean shouldSkipGiftFrame(boolean comboEnd, long repeatCount, long comboCount) {
+        if (comboEnd) {
+            return false;
+        }
+        return repeatCount > 1 || comboCount > 1;
+    }
+
+    /**
+     * 同一个礼物连击只感谢一次。
+     *
+     * <p>SDK 会同时投 onGift（逐帧）和 onGiftCombo（合并后），不去重就是一条礼物感谢两三遍。
+     * 没有 groupId（0/空）的礼物无从判断，宁可重复也不漏，直接放行。
+     */
+    private boolean alreadyThanked(String group) {
+        if (group == null || group.isBlank() || "0".equals(group) || "null".equals(group)) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        thankedGiftGroups.entrySet().removeIf(e -> now - e.getValue() > 10_000L);
+        return thankedGiftGroups.putIfAbsent(group, now) != null;
+    }
+
+    /** SDK 监听器：只覆写我们关心的事件。 */
     private class DanmakuListener implements DouyinLiveListener {
 
         @Override
@@ -206,12 +248,39 @@ public class DanmakuCollector {
 
         @Override
         public void onGift(GiftEvent event) {
-            // 连击过程中 SDK 会多次回调，只认最后一帧：否则一次 20 连击会刷出 20 条感谢和 20 段语音
-            if (!event.isComboEnd()) {
-                log.debug("礼物连击未结束，跳过本轮: {} x{}", event.giftName(), event.repeatCount());
+            if (shouldSkipGiftFrame(event.isComboEnd(), event.repeatCount(), event.comboCount())) {
+                log.debug("礼物连击进行中，等结束帧: {} x{}", event.giftName(), event.repeatCount());
                 return;
             }
-            dispatch(event, LiveEvent.Type.GIFT, event.giftName(), (int) event.repeatCount());
+            String group = String.valueOf(event.groupId());
+            if (alreadyThanked(group)) {
+                log.debug("该连击已感谢过，跳过重复事件: group={} gift={}", group, event.giftName());
+                return;
+            }
+            dispatch(event, LiveEvent.Type.GIFT, event.giftName(),
+                    (int) Math.max(1, event.repeatCount()));
+        }
+
+        /** SDK 合并后的连击事件：只认 FINISHED，ONGOING 会一直刷新。 */
+        @Override
+        public void onGiftCombo(GiftComboEvent event) {
+            if (event.state() != GiftComboState.FINISHED) {
+                return;
+            }
+            String group = String.valueOf(event.groupId());
+            if (alreadyThanked(group)) {
+                return;
+            }
+            dispatch(event, LiveEvent.Type.GIFT, event.giftName(),
+                    (int) Math.max(1, event.repeatCount()));
+        }
+
+        @Override
+        public void onLike(LikeEvent event) {
+            // 点赞是高频事件（观众连点几十上百下），这里只负责投递；
+            // 文案与节流在 ReplyService：攒够数量、冷却到期才播一次。
+            long count = event.count() > 0 ? event.count() : 1;
+            dispatch(event, LiveEvent.Type.LIKE, null, (int) Math.min(count, 999));
         }
 
         @Override

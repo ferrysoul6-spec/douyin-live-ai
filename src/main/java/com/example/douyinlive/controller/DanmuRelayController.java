@@ -74,13 +74,31 @@ public class DanmuRelayController {
         if (isBlank(content)) {
             content = firstText(body, "content", "text", "message");
         }
+        // 点赞/礼物的数量：点赞要靠它累计，礼物要靠它说「N 个」
+        Integer count = parseCount(firstText(data, "count", "Count", "repeatCount", "repeat_count", "num"));
+        if (count == null) {
+            count = parseCount(firstText(body, "count", "Count", "repeatCount", "repeat_count", "num"));
+        }
 
         LiveEvent event = new LiveEvent();
         event.setType(mapType(rawType));
         event.setNickname(isBlank(nickname) ? "热心观众" : nickname.trim());
         event.setContent(content == null ? "" : content.trim());
+        event.setCount(count);
         event.setTimestamp(System.currentTimeMillis());
         return event;
+    }
+
+    private static Integer parseCount(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            int n = Integer.parseInt(raw.trim());
+            return n > 0 ? n : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /** 中继脚本按名字传，dy-barrage-grab 按数字传（1 弹幕 / 2 点赞 / 3 进场 / 4 关注 / 5 礼物 / 7 粉丝团）。 */

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +46,11 @@ public class ReplyService {
     private final MusicService music;
     private final StageService stage;
 
+    /** 尚未感谢的点赞数：点赞是高频事件，攒够一批再播一次。 */
+    private final AtomicLong pendingLikes = new AtomicLong();
+    /** 上次因点赞致谢的时间，用于冷却。 */
+    private final AtomicLong lastLikeThanksAt = new AtomicLong();
+
     public ReplyService(AppProperties props, FaqService faqService,
                         RateLimiter rateLimiter, LlmClient llmClient,
                         TtsAsyncService ttsAsyncService,
@@ -68,7 +74,8 @@ public class ReplyService {
             case COMMENT -> handleComment(event);
             case GIFT -> handleGift(event);
             case FOLLOW -> handleFollow(event);
-            case LIKE, UNKNOWN -> OutboundMessage.suppressed("不处理的事件类型");
+            case LIKE -> handleLike(event);
+            case UNKNOWN -> OutboundMessage.suppressed("不处理的事件类型");
         };
         attachAudio(msg);
         if (!msg.isSuppressed()) {
@@ -291,6 +298,41 @@ public class ReplyService {
         OutboundMessage msg = OutboundMessage.of(truncate(text, props.getPersona().getMaxReplyChars()),
                 OutboundMessage.Display.DANMU, OutboundMessage.Source.WELCOME);
         msg.setToNickname(nickname);
+        return msg;
+    }
+
+    /**
+     * 点赞感谢。
+     *
+     * <p>点赞是高频事件：观众连点几十上百下，平台会连续回调，每一条都回就刷屏了。
+     * 所以先累计、攒够 min-count 才值得说，再叠加冷却（默认 45s 只说一次），
+     * 冷却期内继续累计、下次一起说。
+     */
+    private OutboundMessage handleLike(LiveEvent event) {
+        int count = event.getCount() == null ? 1 : Math.max(1, event.getCount());
+        long total = pendingLikes.addAndGet(count);
+
+        AppProperties.Throttle th = props.getThrottle();
+        if (total < Math.max(1, th.getLikeThankMinCount())) {
+            return OutboundMessage.suppressed("点赞累计不足");
+        }
+        long now = System.currentTimeMillis();
+        long cooldownMs = Math.max(5, th.getLikeThankCooldownSeconds()) * 1000L;
+        if (now - lastLikeThanksAt.get() < cooldownMs) {
+            return OutboundMessage.suppressed("点赞感谢冷却中");
+        }
+        lastLikeThanksAt.set(now);
+        long n = pendingLikes.getAndSet(0);
+
+        stage.play("happy");
+        String nickname = event.getNickname();
+        String who = (nickname == null || nickname.isBlank()) ? "宝子们" : nickname;
+        String text = "谢谢" + who + "点的 " + n + " 个赞，比心~";
+        OutboundMessage msg = OutboundMessage.of(truncate(text, props.getPersona().getMaxReplyChars()),
+                OutboundMessage.Display.DANMU, OutboundMessage.Source.WELCOME);
+        if (nickname != null && !nickname.isBlank()) {
+            msg.setToNickname(nickname);
+        }
         return msg;
     }
 

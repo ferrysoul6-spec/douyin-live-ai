@@ -148,6 +148,32 @@ class ReplyServiceOrchestrationTest {
     }
 
     @Test
+    void 点赞攒够数量才播一次() {
+        // 阈值默认 5：前 4 个赞静默累计，第 5 个才播
+        for (int i = 0; i < 4; i++) {
+            assertThat(service.handle(event(LiveEvent.Type.LIKE, null, 1)).isSuppressed()).isTrue();
+        }
+
+        OutboundMessage msg = service.handle(event(LiveEvent.Type.LIKE, null, 1));
+
+        assertThat(msg.isSuppressed()).isFalse();
+        assertThat(msg.getText()).contains("5 个赞");
+        assertThat(msg.getSource()).isEqualTo(OutboundMessage.Source.WELCOME);
+    }
+
+    @Test
+    void 点赞感谢冷却期内不重复播报() {
+        props.getThrottle().setLikeThankMinCount(1);
+        assertThat(service.handle(event(LiveEvent.Type.LIKE, null, 1)).isSuppressed()).isFalse();
+
+        OutboundMessage second = service.handle(event(LiveEvent.Type.LIKE, null, 1));
+
+        // 冷却中继续累计，下次一起说——但不能每条赞都播一遍
+        assertThat(second.isSuppressed()).isTrue();
+        assertThat(second.getSuppressReason()).contains("冷却");
+    }
+
+    @Test
     void 点歌指令不走FAQ和LLM() {
         when(music.parse("点歌 晴天")).thenReturn(java.util.Optional.of(
                 new MusicService.Command(MusicService.CommandType.PLAY, "晴天")));
